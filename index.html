@@ -347,7 +347,26 @@ try{
  const editors=doc(db,'configuracao','editores');
  login.onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){alert('Falha ao entrar: '+e.message)}};
  logout.onclick=()=>signOut(auth);
- onAuthStateChanged(auth,async user=>{authUser=user;editor=false;if(user){try{const snap=await getDoc(editors);editor=!!(snap.exists()&&snap.data().uids?.includes(user.uid);}catch(e){console.warn('Não foi possível verificar permissão:',e)}}access()});
+
+onAuthStateChanged(auth, async user => {
+  authUser = user;
+  editor = false;
+
+  if (user) {
+    try {
+      const snap = await getDoc(editors);
+      editor = !!(
+        snap.exists() &&
+        snap.data().uids?.includes(user.uid)
+      );
+    } catch (e) {
+      console.warn('Não foi possível verificar permissão:', e);
+    }
+  }
+
+  access();
+});
+
  onSnapshot(ref,snap=>{loading=true;
  if(snap.exists()){
   const cloud=snap.data();if(Array.isArray(cloud.registros)){data=cloud.registros;localStorage.setItem('cess-dashboard-v1',JSON.stringify(data));render()}
