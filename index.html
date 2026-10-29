@@ -335,7 +335,7 @@ const $=id=>document.getElementById(id),state=$('cloud-state'),login=$('cloud-lo
 let ready=false,editor=false,loading=false,authUser=null,writeTimer=null;
 const editSelectors=['#new','#restore','#save-local','[data-edit]','[data-delete]'];
 function access(){
- const permitted=ready && !!authUser;
+const permitted=ready && !!authUser && authorizedUids.has(authUser.uid);
  document.getElementById('protected-panel').hidden=!permitted;
  document.getElementById('access-notice').hidden=permitted;
  login.hidden=!!authUser;logout.hidden=!authUser;
