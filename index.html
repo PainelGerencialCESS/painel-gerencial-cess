@@ -323,7 +323,7 @@ document.querySelector('#save-local').onclick=()=>{oldSave();saveSpecial()};
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 import {getFirestore,doc,onSnapshot,setDoc,getDoc,serverTimestamp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
-const config={apiKey:'AIzaSyBqtZtpo497aNbz6ri9-4b5Mo93haLxZM4',authDomain:'painel-gerencial-cess-356bf.firebaseapp.com',projectId:'painel-gerencial-cess-356bf',storageBucket:'painel-gerencial-cess-356bf.firebasestorage.app',messagingSenderId:'551400374079',appId:'1:551400374079:web:a26613811a82f07d6b5d8a'};
+const config={apiKey:'AIzaSyBqtZtpo497aNbz6ri9-4b5Mo93haLxZM4',authDomain:'painel-gerencial-cess.firebaseapp.com',projectId:'painel-gerencial-cess',storageBucket:'painel-gerencial-cess.firebasestorage.app',messagingSenderId:'1033494640276',appId:'1:1033494640276:web:f1c9ad7238dd4d971d2681'};
 const $=id=>document.getElementById(id),state=$('cloud-state'),login=$('cloud-login'),logout=$('cloud-logout');
 let ready=false,editor=false,loading=false,authUser=null,writeTimer=null;
 const editSelectors=['#new','#restore','#save-local','[data-edit]','[data-delete]'];
