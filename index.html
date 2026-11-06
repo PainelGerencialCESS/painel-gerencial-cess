@@ -244,7 +244,7 @@ header.hero:after{content:"";position:absolute;right:-70px;top:-145px;width:440p
 .special-table.rdi-mode th,.special-table.rdi-mode td{box-sizing:border-box!important}
 .special-table.rdi-mode .progress-caption{display:flex;flex-direction:column;gap:3px;min-height:0!important;white-space:normal!important;font-size:10px!important;line-height:1.25!important}
 .progress-count{font-weight:800;color:#293e45}.progress-next{font-weight:500;color:#50636b}.progress-stop{font-weight:800;color:#a84950}
-</style></head><body><header class="hero"><div class="hero-inner"><div class="hero-brand"><span class="brand-mark">CESS</span><span class="brand-caption">SESAB <span class="brand-sep">/</span> GESTÃO DE AQUISIÇÕES</span></div><div class="hero-title"><span class="hero-kicker">CENTRAL DE CONTROLE E MONITORAMENTO</span><h1>PAINEL GERENCIAL <span>CESS</span></h1><h2>Licitações <i></i> Saques <i></i> Estoque</h2><p>Acompanhamento estratégico de processos e aquisições da rede estadual de saúde</p></div></div><div class="hero-side"><div class="hero-symbol">C<span>·</span></div></div></header><div id="cloud-strip" style="padding:10px 2%;background:#fff4d9;color:#60450c;font-size:13px;display:flex;flex-wrap:wrap;gap:10px;align-items:center"><strong id="cloud-state">Conectando ao Firebase…</strong><span id="cloud-user"></span><button id="cloud-login" type="button">Entrar com Google</button><input id="email-sesab" type="email" placeholder="E-mail corporativo SESAB"><button id="login-sesab" type="button">Receber link de acesso</button><button id="cloud-logout" type="button" hidden>Sair</button></div><div id="access-notice" style="padding:30px;text-align:center;font-weight:700">Acesso restrito. Entre com uma conta Google autorizada para consultar o painel.</div><main class="wrap" id="protected-panel" hidden><div class="bar"><button class="active" data-view="geral">Visão geral</button><button data-view="GERAL">Levantamento geral</button><button data-view="RDI">Radiodiagnóstico</button><button data-view="atas">Atas</button><button data-view="saques">Saques</button><button data-view="sei">Processos SEI</button><button data-special="rdi">Distribuição RDI</button><button data-special="adesoes">Adesões</button><button class="primary" id="new">+ Novo registro</button><button id="export">Exportar CSV</button><label class="btn" for="restore">Importar backup</label><input type="file" id="restore" accept=".json"></div><div class="save-tools save-footer"><span id="save-status" aria-live="polite">Última atualização: não registrada</span><button type="button" id="save-local" title="Salvar alterações neste navegador">💾 Salvar</button></div><div class="cards" id="cards"></div><div class="layout" id="charts"><div class="panel"><b>Distribuição por situação</b><div id="stages" style="margin-top:14px"></div></div><div class="panel"><b>Origem dos registros</b><div id="groups" style="margin-top:14px"></div></div></div><div class="filters"><input id="search" placeholder="Pesquisar equipamento, processo SEI, AFM ou observações..."><select id="stage"><option value="">Todas as situações</option></select><select id="org"><option value="">Todos os órgãos</option><option>SAEB</option><option>SESAB</option><option>DITEC</option><option>SEFAZ</option><option>CEAC</option></select><button id="reset">Limpar filtros</button></div><div class="panel" style="margin-bottom:10px"><b id="heading">Registros</b> <span class="muted" id="count"></span><div class="muted" style="margin-top:6px">Dados iniciais importados do levantamento original. Sincronização pelo Firebase após configuração; não há integração automática com o SEI/BA.</div></div><div class="tablebox"><table><thead><tr><th>Origem</th><th>Equipamento / item</th><th>Situação</th><th>Descrição / andamento</th><th>Processo SEI</th><th>Órgão</th><th>RP</th><th>Saque</th><th>Observações</th><th>Reservas</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="rows"></tbody></table></div><section id="special-section" style="display:none;margin-top:12px"><div class="panel"><h2 id="special-title" style="margin:0 0 8px">Distribuição RDI</h2><p class="muted" id="special-note"></p><input id="special-search" placeholder="Pesquisar equipamento, unidade, processo, fornecedor ou situação..." style="width:100%;padding:12px;margin:12px 0;border:1px solid #cbd4d3;border-radius:8px"><div class="special-actions"><span class="muted">Para alterar os dados, utilize Editar. Na Distribuição RDI, Detalhes mostra as etapas.</span></div><div class="tablebox special-table"><table><thead id="special-head"></thead><tbody id="special-body"></tbody></table></div><div class="muted" id="special-count" style="margin-top:10px"></div></div></section><footer>Painel Gerencial CESS • Conferir informações processuais nas fontes oficiais • Não inserir senhas ou dados sigilosos.</footer></main><dialog id="dlg"><form class="modal" id="editform" method="dialog"><h2 id="modtitle">Editar registro</h2><div class="fields" id="fields"></div><div class="bar" style="justify-content:flex-end;margin-top:20px"><button type="button" id="cancel">Cancelar</button><button class="primary" type="submit">Salvar alterações</button></div></form></dialog><script>const INITIAL=[];const KEY='cess-dashboard-v1';let data=[];const FASES=['Ata Ativa','Em Saque','Licitação Externa','Licitação Interna','Aguardando Empenho','Aguardando Entrega','Outros'];
+</style></head><body><header class="hero"><div class="hero-inner"><div class="hero-brand"><span class="brand-mark">CESS</span><span class="brand-caption">SESAB <span class="brand-sep">/</span> GESTÃO DE AQUISIÇÕES</span></div><div class="hero-title"><span class="hero-kicker">CENTRAL DE CONTROLE E MONITORAMENTO</span><h1>PAINEL GERENCIAL <span>CESS</span></h1><h2>Licitações <i></i> Saques <i></i> Estoque</h2><p>Acompanhamento estratégico de processos e aquisições da rede estadual de saúde</p></div></div><div class="hero-side"><div class="hero-symbol">C<span>·</span></div></div></header><div id="cloud-strip" style="padding:10px 2%;background:#fff4d9;color:#60450c;font-size:13px;display:flex;flex-wrap:wrap;gap:10px;align-items:center"><strong id="cloud-state">Conectando ao Supabase…</strong><span id="cloud-user"></span><button id="cloud-login" type="button" hidden>Entrar</button><input id="email-sesab" type="email" placeholder="E-mail corporativo SESAB"><input id="password-sesab" type="password" placeholder="Senha do painel" autocomplete="current-password"><button id="login-sesab" type="button">Entrar com e-mail e senha</button><button id="cloud-logout" type="button" hidden>Sair</button></div><div id="access-notice" style="padding:30px;text-align:center;font-weight:700">Consulta pública disponível. Entre com uma conta autorizada para editar o painel.</div><main class="wrap" id="protected-panel" hidden><div class="bar"><button class="active" data-view="geral">Visão geral</button><button data-view="GERAL">Levantamento geral</button><button data-view="RDI">Radiodiagnóstico</button><button data-view="atas">Atas</button><button data-view="saques">Saques</button><button data-view="sei">Processos SEI</button><button data-special="rdi">Distribuição RDI</button><button data-special="adesoes">Adesões</button><button class="primary" id="new">+ Novo registro</button><button id="export">Exportar CSV</button><label class="btn" for="restore">Importar backup</label><input type="file" id="restore" accept=".json"></div><div class="save-tools save-footer"><span id="save-status" aria-live="polite">Última atualização: não registrada</span><button type="button" id="save-local" title="Salvar alterações neste navegador">💾 Salvar</button></div><div class="cards" id="cards"></div><div class="layout" id="charts"><div class="panel"><b>Distribuição por situação</b><div id="stages" style="margin-top:14px"></div></div><div class="panel"><b>Origem dos registros</b><div id="groups" style="margin-top:14px"></div></div></div><div class="filters"><input id="search" placeholder="Pesquisar equipamento, processo SEI, AFM ou observações..."><select id="stage"><option value="">Todas as situações</option></select><select id="org"><option value="">Todos os órgãos</option><option>SAEB</option><option>SESAB</option><option>DITEC</option><option>SEFAZ</option><option>CEAC</option></select><button id="reset">Limpar filtros</button></div><div class="panel" style="margin-bottom:10px"><b id="heading">Registros</b> <span class="muted" id="count"></span><div class="muted" style="margin-top:6px">Dados iniciais importados do levantamento original. Sincronização pelo Supabase; não há integração automática com o SEI/BA.</div></div><div class="tablebox"><table><thead><tr><th>Origem</th><th>Equipamento / item</th><th>Situação</th><th>Descrição / andamento</th><th>Processo SEI</th><th>Órgão</th><th>RP</th><th>Saque</th><th>Observações</th><th>Reservas</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="rows"></tbody></table></div><section id="special-section" style="display:none;margin-top:12px"><div class="panel"><h2 id="special-title" style="margin:0 0 8px">Distribuição RDI</h2><p class="muted" id="special-note"></p><input id="special-search" placeholder="Pesquisar equipamento, unidade, processo, fornecedor ou situação..." style="width:100%;padding:12px;margin:12px 0;border:1px solid #cbd4d3;border-radius:8px"><div class="special-actions"><span class="muted">Para alterar os dados, utilize Editar. Na Distribuição RDI, Detalhes mostra as etapas.</span></div><div class="tablebox special-table"><table><thead id="special-head"></thead><tbody id="special-body"></tbody></table></div><div class="muted" id="special-count" style="margin-top:10px"></div></div></section><footer>Painel Gerencial CESS • Conferir informações processuais nas fontes oficiais • Não inserir senhas ou dados sigilosos.</footer></main><dialog id="dlg"><form class="modal" id="editform" method="dialog"><h2 id="modtitle">Editar registro</h2><div class="fields" id="fields"></div><div class="bar" style="justify-content:flex-end;margin-top:20px"><button type="button" id="cancel">Cancelar</button><button class="primary" type="submit">Salvar alterações</button></div></form></dialog><script>const INITIAL=[];const KEY='cess-dashboard-v1';let data=[];const FASES=['Ata Ativa','Em Saque','Licitação Externa','Licitação Interna','Aguardando Empenho','Aguardando Entrega','Outros'];
 function normalize(x){
  const a={...x};let f=String(a.fase||'').toLowerCase(),d=String(a.descricao||'');
  if(/aguardando (?:nova )?(?:nota de )?empenho|aguarda (?:nota de )?empenho|falta empenho|pendente de empenho/i.test(d) && /saque|sacando|empenho/i.test(d))a.fase='Aguardando Empenho';
@@ -320,117 +320,63 @@ document.querySelector('#editform').onsubmit=e=>{if(!specialView){originalSubmit
 const oldSave=document.querySelector('#save-local').onclick;
 document.querySelector('#save-local').onclick=()=>{oldSave();saveSpecial()};
 </script><dialog id="rdi-detail-dialog" class="rdi-detail"><div class="detail-top"><h2 class="detail-title">Etapas de implantação</h2><button type="button" onclick="document.querySelector('#rdi-detail-dialog').close()">Fechar ×</button></div><p>Andamento das etapas de implantação do equipamento</p><div class="detail-steps"></div><div class="detail-bottom"><button type="button" class="detail-edit">Editar etapas</button></div></dialog><script type="module">
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
-import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,sendSignInLinkToEmail,isSignInWithEmailLink,signInWithEmailLink} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
-import {getFirestore,doc,onSnapshot,setDoc,getDoc,serverTimestamp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
-const config = {
-  apiKey: "AIzaSyAtYkm66Yhptt3WsGtFkbLX8QAdNfJDD-A",
-  authDomain: "painel-gerencial-cess.firebaseapp.com",
-  projectId: "painel-gerencial-cess",
-  storageBucket: "painel-gerencial-cess.firebasestorage.app",
-  messagingSenderId: "1033494640276",
-  appId: "1:1033494640276:web:f1c9ad7238dd4d971d2681"
-};
-const $=id=>document.getElementById(id),state=$('cloud-state'),login=$('cloud-login'),logout=$('cloud-logout');
-let ready=false,editor=false,loading=false,authUser=null,writeTimer=null;
-const editSelectors=['#new','#restore','#save-local','[data-edit]','[data-delete]'];
-function access(){
-const permitted=ready && !!authUser && authorizedUids.has(authUser.uid);
- document.getElementById('protected-panel').hidden=!permitted;
- document.getElementById('access-notice').hidden=permitted;
- login.hidden=!!authUser;logout.hidden=!authUser;
- $('cloud-user').textContent=authUser?(permitted?(authUser.email+(editor?' · editor autorizado':' · somente consulta')):'Conta sem acesso ou aguardando autorização'):'Acesso restrito';
- document.querySelectorAll('#new,#save-local,label[for="restore"]').forEach(el=>{el.style.display=editor?'':'none'});
- document.querySelectorAll('#rows button,#special-body button').forEach(el=>{if(/editar|excluir|remover/i.test(el.textContent))el.style.display=editor?'':'none'});
+import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const supabase=createClient('https://gnbkyeawqocglnifxenz.supabase.co','sb_publishable_Ft3DeW5IxI2qq5dHt-lrPw_ux-FQ0YG');
+const el=id=>document.getElementById(id);
+const state=el('cloud-state'),logout=el('cloud-logout'),login=el('login-sesab');
+const specialGroups={rdi:'__CESS_RDI_DISTRIBUICAO__',adesoes:'__CESS_ADESOES__'};
+let editor=false,ready=false,authUser=null,writing=false,loading=false,saveTimer=null,remoteIds=new Map();
+function setStatus(message){state.textContent='● '+message;}
+function applyAccess(){
+  // Consulta pública; somente usuários autorizados podem alterar registros.
+  el('protected-panel').hidden=false;el('access-notice').hidden=true;
+  el('cloud-login').hidden=true;logout.hidden=!authUser;
+  el('email-sesab').hidden=!!authUser;el('password-sesab').hidden=!!authUser;login.hidden=!!authUser;
+  el('cloud-user').textContent=authUser?(authUser.email+(editor?' · administrador':' · consulta')):'Consulta pública';
+  document.querySelectorAll('#new,#save-local,label[for="restore"]').forEach(x=>x.style.display=editor?'':'none');
+  document.querySelectorAll('#rows [data-edit],#special-body [data-special-edit],.detail-edit').forEach(x=>x.style.display=editor?'':'none');
 }
-// Proteção visual complementar; a segurança real é garantida pelas regras do Firestore.
-document.addEventListener('click',ev=>{if(editor)return;const t=ev.target.closest('button,label');if(!t)return;
- if(t.matches('#new,#save-local,label[for="restore"]')||((t.closest('#rows,#special-body'))&&/editar|excluir|remover/i.test(t.textContent))){ev.preventDefault();ev.stopImmediatePropagation();alert('A edição exige uma conta autorizada.');}},true);
-document.getElementById('editform').addEventListener('submit',ev=>{if(!editor){ev.preventDefault();ev.stopImmediatePropagation();alert('Somente editores autorizados podem salvar.')}},true);
-try{
- const app=initializeApp(config),auth=getAuth(app),db=getFirestore(app),ref=doc(db,'paineis','cess');
- const editors=doc(db,'configuracao','editores');
- login.onclick=async()=>{
+const oldRender=render;render=function(...args){let result=oldRender(...args);applyAccess();return result;};
+const oldRenderSpecial=renderSpecial;renderSpecial=function(...args){let result=oldRenderSpecial(...args);applyAccess();return result;};
+document.addEventListener('click',e=>{if(editor)return;let target=e.target.closest('#new,#save-local,label[for="restore"],[data-edit],[data-special-edit],.detail-edit');if(target){e.preventDefault();e.stopImmediatePropagation();alert('Somente usuários autorizados podem editar.');}},true);
+el('editform').addEventListener('submit',e=>{if(!editor){e.preventDefault();e.stopImmediatePropagation();alert('Somente usuários autorizados podem salvar.');}},true);
+el('restore').addEventListener('change',e=>{if(!editor){e.preventDefault();e.stopImmediatePropagation();}},true);
+function decode(row){if(row.grupo===specialGroups.rdi||row.grupo===specialGroups.adesoes){try{return JSON.parse(row.descricao||'{}')}catch{return null}}return {id:row.registro_id||String(row.id),grupo:row.grupo||'GERAL',item:row.item||'',fase:row.fase||'Outros',orgao:row.orgao||'',sei:row.sei||'',descricao:row.descricao||'',rp:row.rp||'',saque:row.saque||'',estoque:row.estoque||'',observacoes:row.observacoes||'',atualizacao:row.atualizacao||'',reservas:row.origem||''};}
+function encode(record,group){if(group)return {registro_id:record._id,grupo:specialGroups[group],item:record.equipamento||'',fase:'Outros',orgao:'',sei:'',descricao:JSON.stringify(record),rp:'',saque:'',estoque:'',observacoes:'',atualizacao:'',origem:''};return {registro_id:String(record.id),grupo:record.grupo||'GERAL',item:record.item||'',fase:record.fase||'Outros',orgao:record.orgao||'',sei:record.sei||'',descricao:record.descricao||'',rp:record.rp||'',saque:record.saque||'',estoque:record.estoque||'',observacoes:record.observacoes||'',atualizacao:record.atualizacao||'',origem:record.reservas||''};}
+async function load(){
+  if(writing)return;
+  loading=true;setStatus('Carregando registros do Supabase…');
+  try{
+    let all=[],from=0,chunk=500;
+    while(true){const {data:page,error}=await supabase.from('registros_cess').select('*').order('id',{ascending:true}).range(from,from+chunk-1);if(error)throw error;all.push(...page);if(page.length<chunk)break;from+=chunk;}
+    remoteIds=new Map(all.filter(r=>r.registro_id).map(r=>[String(r.registro_id),r.id]));
+    data=[];RDI_DISTRIBUICAO=[];ADESOES=[];
+    for(const r of all){let decoded=decode(r);if(!decoded)continue;if(r.grupo===specialGroups.rdi)RDI_DISTRIBUICAO.push(decoded);else if(r.grupo===specialGroups.adesoes)ADESOES.push(decoded);else data.push(normalize(decoded));}
+    render();renderSpecial();ready=true;setStatus('Sincronizado com Supabase · '+all.length+' registros');
+  }catch(e){ready=false;setStatus('Falha ao carregar: '+e.message);console.error(e)}finally{loading=false;applyAccess()}
+}
+async function save(){
+ if(!editor){alert('Sua conta não tem permissão de edição.');return false}
+ if(!ready||loading){alert('Aguarde o carregamento dos dados.');return false}
+ if(writing)return false;
+ writing=true;setStatus('Salvando no Supabase…');
  try{
-  const provider=new GoogleAuthProvider();
-  provider.setCustomParameters({prompt:'select_account'});
-  await signInWithPopup(auth,provider);
- }catch(e){
-  if(e.code!=='auth/popup-closed-by-user')alert('Falha ao entrar: '+e.message);
- }
-};
- logout.onclick=()=>signOut(auth);document.getElementById('login-sesab').onclick = async () => {
-  const email = document.getElementById('email-sesab').value.trim().toLowerCase();
-
-  if (!email) {
-    alert('Informe seu e-mail corporativo.');
-    return;
-  }
-
-  try {
-    await sendSignInLinkToEmail(auth, email, {
-      url: window.location.origin + window.location.pathname,
-      handleCodeInApp: true
-    });
-
-    localStorage.setItem('email-sesab-login', email);
-    alert('Link enviado! Verifique sua caixa de entrada do Outlook.');
-  } catch (e) {
-    alert('Não foi possível enviar o link: ' + e.message);
-  }
-};
- if (isSignInWithEmailLink(auth, window.location.href)) {
-  let email = localStorage.getItem('email-sesab-login');
-
-  if (!email) {
-    email = window.prompt('Confirme seu e-mail corporativo SESAB:');
-  }
-
-  if (email) {
-    signInWithEmailLink(auth, email.trim(), window.location.href)
-      .then(() => {
-        localStorage.removeItem('email-sesab-login');
-        window.history.replaceState({}, document.title, window.location.pathname);
-      })
-      .catch(e => {
-        alert('Não foi possível concluir o acesso: ' + e.message);
-      });
-  }
+   const all=[...data.map(x=>encode(x)),...RDI_DISTRIBUICAO.map(x=>encode(x,'rdi')),...ADESOES.map(x=>encode(x,'adesoes'))];
+   const current=new Set(all.map(r=>String(r.registro_id)));
+   // Atualizações individuais evitam depender de uma restrição UNIQUE não confirmada.
+   for(const r of all){let id=remoteIds.get(String(r.registro_id));let result=id!=null?await supabase.from('registros_cess').update(r).eq('id',id).select('id'):await supabase.from('registros_cess').insert(r).select('id');if(result.error)throw result.error;if(!result.data?.length)throw Error('Gravação não confirmada; confira as políticas RLS.');remoteIds.set(String(r.registro_id),result.data[0].id)}
+   // Não excluímos registros remotos automaticamente: protege dados existentes.
+   localStorage.setItem(SAVE_DATE_KEY,new Date().toISOString());showSaveStatus();setStatus('Alterações salvas no Supabase');return true;
+ }catch(e){setStatus('Falha ao salvar: '+e.message);alert('Não foi possível confirmar a gravação: '+e.message);return false}finally{writing=false}
 }
-
-let stopListening=null,authSequence=0;
-const authorizedUids=new Set(['dcyH95InqlcJucdvqqOyW6s3K3h1','vPLkEwk5KDhdPRgTzChdVh61DSU2','Kt1pMrvGETZXM63aNNwpTV17nf32']);
-onAuthStateChanged(auth, async user => {
- const sequence=++authSequence;
- if(stopListening){stopListening();stopListening=null;}
- authUser=user;editor=false;ready=false;
- data=[];RDI_DISTRIBUICAO=[];ADESOES=[];render();if(typeof renderSpecial==='function')renderSpecial();
- state.textContent='● Aguardando autenticação';access();
- if(!user){state.textContent='● Entre com Google ou e-mail corporativo autorizado para consultar';return;}
- if(!authorizedUids.has(user.uid)){
-   state.textContent='● Conta não autorizada';return;
- }
- editor=user.uid==='dcyH95InqlcJucdvqqOyW6s3K3h1';
- state.textContent='● Carregando dados autorizados';
- stopListening=onSnapshot(ref,snap=>{
-  if(sequence!==authSequence)return;
-  loading=true;
-  if(snap.exists()){
-   const cloud=snap.data();
-   data=Array.isArray(cloud.registros)?cloud.registros:[];
-   RDI_DISTRIBUICAO=Array.isArray(cloud.rdi)?cloud.rdi:[];
-   ADESOES=Array.isArray(cloud.adesoes)?cloud.adesoes:[];
-   render();if(typeof renderSpecial==='function')renderSpecial();
-   state.textContent='● Sincronizado com Firebase'+(cloud.atualizadoEm?.toDate?' · '+cloud.atualizadoEm.toDate().toLocaleString('pt-BR'):'');
-  }else{state.textContent='● Banco vazio — contate a administradora';}
-  ready=true;loading=false;access();
- },err=>{
-  if(sequence!==authSequence)return;
-  ready=false;data=[];RDI_DISTRIBUICAO=[];ADESOES=[];
-  state.textContent='● Acesso negado ou falha na leitura: '+err.message;access();
- });
-});
- window.CESS_CLOUD={save(){if(loading)return;if(!ready){alert('Aguarde a conexão com o Firebase.');return}if(!editor){alert('Conta sem permissão para editar.');return}clearTimeout(writeTimer);state.textContent='Salvando alterações…';writeTimer=setTimeout(async()=>{try{await setDoc(ref,{registros:data,rdi:RDI_DISTRIBUICAO,adesoes:ADESOES,atualizadoEm:serverTimestamp(),atualizadoPor:auth.currentUser?.email||''});state.textContent='● Alterações salvas na nuvem'}catch(e){state.textContent='Falha ao salvar: '+e.message;alert('Não foi possível salvar na nuvem: '+e.message)}},450)}};
- access();
-}catch(e){state.textContent='Firebase indisponível: '+e.message}
+window.CESS_CLOUD={save(){clearTimeout(saveTimer);saveTimer=setTimeout(save,350)}};
+login.onclick=async()=>{let email=el('email-sesab').value.trim().toLowerCase(),password=el('password-sesab').value;if(!email||!password){alert('Informe seu e-mail e a senha cadastrada no Supabase.');return}setStatus('Autenticando…');const {error}=await supabase.auth.signInWithPassword({email,password});if(error){setStatus('Falha na autenticação');alert('Não foi possível entrar: '+error.message)}el('password-sesab').value='';};
+logout.onclick=async()=>{const {error}=await supabase.auth.signOut();if(error)alert(error.message)};
+async function refreshUser(){
+ const {data:session}=await supabase.auth.getUser();authUser=session?.user||null;editor=false;
+ if(authUser){const {data:profile,error}=await supabase.from('usuarios_cess').select('perfil,ativo').eq('id',authUser.id).maybeSingle();if(error)console.warn('Perfil:',error.message);editor=!!profile?.ativo&&['administrador','editor'].includes(String(profile.perfil||'').toLowerCase());}
+ applyAccess();await load();
+}
+supabase.auth.onAuthStateChange(()=>{setTimeout(refreshUser,0)});
+refreshUser();
 </script></body></html>
