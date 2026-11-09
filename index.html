@@ -559,7 +559,7 @@ records=records.map((r,i)=>({...r,_id:r._id||'row-'+i}));
 let openId=null,editing=null;
 const list=document.getElementById('planning-list'),summary=document.getElementById('plan-summary'),search=document.getElementById('plan-search'),filter=document.getElementById('plan-filter');
 filter.innerHTML='<option value="">Todos os status</option>'+statuses.map(s=>'<option>'+esc(s)+'</option>').join('');
-function canEdit(){return typeof editor!=='undefined'&&editor===true}
+function canEdit(){return window.CESS_AUTH?.canEdit()===true}
 function save(){try{localStorage.setItem(key,JSON.stringify(records));return true}catch(e){alert('Não foi possível salvar neste navegador: '+e.message);return false}}
 function badge(st){const c=colors[st]||['#edf0f1','#345'];return '<span class="plan-status" style="background:'+c[0]+';color:'+c[1]+'">'+esc(st||'Não informado')+'</span>'}
 function field(label,value){return '<div class="plan-field"><small>'+esc(label)+'</small><strong>'+esc(value||'—')+'</strong></div>'}
@@ -609,6 +609,8 @@ let recoveryMode=false;
 function openRecovery(){recoveryMode=true;el('recovery-message').textContent='';if(!recoveryDialog.open)recoveryDialog.showModal();}
 const specialGroups={rdi:'__CESS_RDI_DISTRIBUICAO__',adesoes:'__CESS_ADESOES__'};
 let editor=false,ready=false,authUser=null,writing=false,loading=false,saveTimer=null,remoteIds=new Map();
+// Ponte de autorização: o módulo Supabase não expõe suas variáveis aos scripts clássicos.
+window.CESS_AUTH={canEdit:()=>Boolean(authUser&&editor),isSignedIn:()=>Boolean(authUser)};
 function setStatus(message){state.textContent='● '+message;}
 function applyAccess(){
   // Consulta pública; somente usuários autorizados podem alterar registros.
@@ -700,7 +702,7 @@ records=records.map((r,i)=>({...r,_id:r._id||'row-'+i}));
 let openId=null,editing=null;
 const list=document.getElementById('planning-list'),summary=document.getElementById('plan-summary'),search=document.getElementById('plan-search'),filter=document.getElementById('plan-filter');
 filter.innerHTML='<option value="">Todos os status</option>'+statuses.map(s=>'<option>'+esc(s)+'</option>').join('');
-function canEdit(){return typeof editor!=='undefined'&&editor===true}
+function canEdit(){return window.CESS_AUTH?.canEdit()===true}
 function save(){try{localStorage.setItem(key,JSON.stringify(records));return true}catch(e){alert('Não foi possível salvar neste navegador: '+e.message);return false}}
 function badge(st){const c=colors[st]||['#edf0f1','#345'];return '<span class="plan-status" style="background:'+c[0]+';color:'+c[1]+'">'+esc(st||'Não informado')+'</span>'}
 function field(label,value){return '<div class="plan-field"><small>'+esc(label)+'</small><strong>'+esc(value||'—')+'</strong></div>'}
