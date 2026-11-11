@@ -1332,8 +1332,28 @@ window.CESS_PLANNING_CLOUD={
 const el=id=>document.getElementById(id);
 const state=el('cloud-state'),logout=el('cloud-logout'),login=el('login-sesab');
 const recoveryDialog=el('password-recovery-dialog');
-let recoveryMode=false;
-function openRecovery(){recoveryMode=true;el('recovery-message').textContent='';if(!recoveryDialog.open)recoveryDialog.showModal();}
+// O Supabase pode devolver o fluxo por hash (#type=recovery) ou por ?code=...
+// Guardamos a intenção ANTES de o SDK consumir/limpar os parâmetros da URL.
+const recoveryReturnParams=new URLSearchParams(location.search);
+const recoveryReturnHash=new URLSearchParams(location.hash.replace(/^#/,''));
+const recoveryIntent=recoveryReturnParams.get('type')==='recovery'||recoveryReturnHash.get('type')==='recovery'||
+  recoveryReturnParams.has('code')||recoveryReturnHash.has('access_token');
+const recoveryReturnError=recoveryReturnParams.get('error_description')||recoveryReturnHash.get('error_description');
+let recoveryMode=false,recoverySessionReady=false,recoveryPromptShown=false;
+function openRecovery(){
+ if(recoveryPromptShown)return;
+ recoveryMode=true;recoveryPromptShown=true;
+ el('recovery-message').textContent='';
+ if(!recoveryDialog.open)recoveryDialog.showModal();
+}
+function explainRecoveryError(){
+ if(!recoveryReturnError)return;
+ const msg='O link de recuperação não é mais válido ou expirou. Solicite um novo em “Esqueci minha senha”, aguarde o e-mail e abra somente o link mais recente.';
+ setTimeout(()=>{setStatus('Link de recuperação inválido ou expirado');alert(msg);},0);
+ // Não apaga o formulário nem altera a sessão: apenas limpa o erro da URL.
+ history.replaceState(null,'',location.pathname);
+}
+
 const specialGroups={rdi:'__CESS_RDI_DISTRIBUICAO__',adesoes:'__CESS_ADESOES__'};
 let editor=false,admin=false,ready=false,authUser=null,writing=false,loading=false,saveTimer=null,remoteIds=new Map();
 // Ponte de autorização: o módulo Supabase não expõe suas variáveis aos scripts clássicos.
@@ -1404,8 +1424,8 @@ async function save(){
 }
 window.CESS_CLOUD={save(){clearTimeout(saveTimer);saveTimer=setTimeout(save,350)}};
 el('reset-sesab').onclick=async()=>{const email=el('email-sesab').value.trim().toLowerCase();if(!email){alert('Informe seu e-mail corporativo no campo acima para receber o link de redefinição.');return;}const redirectTo=location.origin+location.pathname;setStatus('Solicitando redefinição de senha…');const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo});if(error){setStatus('Não foi possível solicitar a redefinição');alert('Não foi possível enviar o link: '+error.message);return;}setStatus('Se o e-mail estiver cadastrado, você receberá um link para definir sua senha.');alert('Confira sua caixa de entrada e o lixo eletrônico. Abra o link mais recente para definir uma nova senha.');};
-el('recovery-cancel').onclick=()=>{recoveryDialog.close();recoveryMode=false;};
-el('password-recovery-form').onsubmit=async e=>{e.preventDefault();const password=el('recovery-password').value,confirmation=el('recovery-confirm').value,message=el('recovery-message');if(password.length<12){message.textContent='Use pelo menos 12 caracteres.';return;}if(password!==confirmation){message.textContent='As senhas não coincidem.';return;}message.textContent='Salvando nova senha…';const {error}=await supabase.auth.updateUser({password});if(error){message.textContent='Não foi possível atualizar: '+error.message;return;}el('recovery-password').value='';el('recovery-confirm').value='';recoveryDialog.close();recoveryMode=false;history.replaceState(null,'',location.pathname+location.search);setStatus('Senha atualizada. Acesso autenticado.');alert('Senha definida com sucesso. Você já pode utilizar o painel com sua conta autorizada.');await refreshUser();};
+el('recovery-cancel').onclick=()=>{recoveryDialog.close();recoveryMode=false;recoveryPromptShown=true;};
+el('password-recovery-form').onsubmit=async e=>{e.preventDefault();const password=el('recovery-password').value,confirmation=el('recovery-confirm').value,message=el('recovery-message');if(password.length<12){message.textContent='Use pelo menos 12 caracteres.';return;}if(password!==confirmation){message.textContent='As senhas não coincidem.';return;}message.textContent='Salvando nova senha…';const {error}=await supabase.auth.updateUser({password});if(error){message.textContent='Não foi possível atualizar: '+error.message;return;}el('recovery-password').value='';el('recovery-confirm').value='';recoveryDialog.close();recoveryMode=false;history.replaceState(null,'',location.pathname);setStatus('Senha atualizada. Acesso autenticado.');alert('Senha definida com sucesso. Você já pode utilizar o painel com sua conta autorizada.');await refreshUser();};
 login.onclick=async()=>{let email=el('email-sesab').value.trim().toLowerCase(),password=el('password-sesab').value;if(!email||!password){alert('Informe seu e-mail e a senha cadastrada no Supabase.');return}setStatus('Autenticando…');const {error}=await supabase.auth.signInWithPassword({email,password});if(error){setStatus('Falha na autenticação');alert('Não foi possível entrar: '+error.message)}el('password-sesab').value='';};
 logout.onclick=async()=>{const {error}=await supabase.auth.signOut();if(error)alert(error.message)};
 async function refreshUser(){
@@ -1413,7 +1433,26 @@ async function refreshUser(){
  if(authUser){const {data:profile,error}=await supabase.from('usuarios_cess').select('perfil,ativo').eq('id',authUser.id).maybeSingle();if(error)console.warn('Perfil:',error.message);editor=!!profile?.ativo&&['administrador','editor'].includes(String(profile.perfil||'').toLowerCase());admin=!!profile?.ativo&&String(profile.perfil||'').toLowerCase()==='administrador';}
  applyAccess();await load();await window.CESSPlanning?.refresh?.();
 }
-supabase.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')setTimeout(openRecovery,0);setTimeout(refreshUser,0)});
+supabase.auth.onAuthStateChange((event,session)=>{
+ if(event==='PASSWORD_RECOVERY'){
+   recoverySessionReady=!!session?.user;
+   if(recoverySessionReady)setTimeout(openRecovery,0);
+ }
+ // Links de convite e alguns formatos de recuperação retornam SIGNED_IN.
+ if(event==='SIGNED_IN'&&recoveryIntent&&session?.user){
+   recoverySessionReady=true;
+   setTimeout(openRecovery,0);
+ }
+ setTimeout(refreshUser,0);
+});
+// Fallback para casos em que INITIAL_SESSION chega depois de o SDK tratar o código.
+// Nunca exibir a troca de senha sem uma sessão autenticada pelo Supabase.
+if(recoveryIntent&&!recoveryReturnError){
+ supabase.auth.getSession().then(({data,error})=>{
+   if(!error&&data?.session?.user){recoverySessionReady=true;openRecovery();}
+ }).catch(console.warn);
+}
+if(recoveryReturnError)explainRecoveryError();
 refreshUser();
 // Administração CESS: toda operação continua sujeita às políticas RLS do Supabase.
 window.CESS_ADMIN_API={
