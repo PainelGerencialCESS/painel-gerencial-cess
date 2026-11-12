@@ -2734,4 +2734,42 @@ window.CESS_TEAM_CLOUD={
 #cess-monitor .cess-monitor-table td:nth-child(11){font-size:17px!important;overflow:visible!important}
 #cess-monitor .cess-monitor-table td:nth-child(12) button{display:block!important;width:72px!important;max-width:100%!important;margin:3px auto!important;padding:6px 3px!important;font-size:10px!important;white-space:nowrap!important}
 </style>
-</body></html>
+<style id="cess-access-visibility-fix-20261112">
+/* Regra visual defensiva: somente quem possui permissão RDI vê ações. */
+body:not(.cess-rdi-authorized) #cess-monitor-body .cess-rdi-edit,
+body:not(.cess-rdi-authorized) #cess-monitor-body .cess-rdi-trash,
+body:not(.cess-rdi-admin) #cess-monitor-trash,
+body:not(.cess-team-authorized) #cess-team-module #cess-team-new,
+body:not(.cess-team-authorized) #cess-team-module #cess-team-manage,
+body:not(.cess-team-authorized) #cess-team-module #cess-report-person-button{display:none!important;visibility:hidden!important;pointer-events:none!important}
+</style>
+<script id="cess-access-visibility-guard-20261112">
+(function(){
+ const ids=['cess-team-new','cess-team-manage','cess-report-person-button'];
+ const orig=window.CESS_TEAM_SET_AUTH;
+ function sync(){
+  const rdi=window.CESS_RDI_CLOUD;
+  const allowed=Boolean(rdi&&rdi.canEdit&&rdi.canEdit());
+  const admin=Boolean(rdi&&rdi.isAdmin&&rdi.isAdmin());
+  document.body.classList.toggle('cess-rdi-authorized',allowed);
+  document.body.classList.toggle('cess-rdi-admin',admin);
+  const team=document.body.classList.contains('cess-team-authorized');
+  ids.forEach(id=>{const el=document.getElementById(id);if(el){el.hidden=!team;el.style.setProperty('display',team?'':'none',team?'':'important')}});
+  document.querySelectorAll('#cess-monitor-body .cess-rdi-edit,#cess-monitor-body .cess-rdi-trash').forEach(el=>{el.hidden=!allowed;el.style.setProperty('display',allowed?'':'none',allowed?'':'important')});
+ }
+ window.CESS_TEAM_SET_AUTH=function(email){
+  const permitted=['kadyja.santos@saude.ba.gov.br','willian.damascena@saude.ba.gov.br'].includes(String(email||'').trim().toLowerCase());
+  document.body.classList.toggle('cess-team-authorized',permitted);
+  if(typeof orig==='function')orig(email);
+  sync();
+ };
+ document.addEventListener('click',function(e){
+  const t=e.target.closest('#cess-monitor-body .cess-rdi-edit,#cess-monitor-body .cess-rdi-trash,#cess-team-new,#cess-team-manage,#cess-report-person-button');
+  if(!t)return;
+  const isRdi=t.matches('.cess-rdi-edit,.cess-rdi-trash');
+  if((isRdi&&!window.CESS_RDI_CLOUD?.canEdit?.())||(!isRdi&&!document.body.classList.contains('cess-team-authorized'))){e.preventDefault();e.stopImmediatePropagation();alert('Seu perfil é somente consulta para esta função.');}
+ },true);
+ new MutationObserver(sync).observe(document.body,{childList:true,subtree:true});
+ sync();
+})();
+</script></body></html>
