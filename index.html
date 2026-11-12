@@ -2710,4 +2710,28 @@ window.CESS_TEAM_CLOUD={
  async removeActivity(id){if(!uuid.test(id))throw Error('Registro ainda não sincronizado');const rows=fail(await db.from('atividades_equipe_cess').delete().eq('id',id).select('id'));if(!rows.length)throw Error('Exclusão não autorizada ou registro inexistente')}
 };
 </script>
+
+<style id="cess-rdi-12-colunas-restauradas-20261112">
+/* Ajuste isolado: mantém as doze colunas de Monitoramento RDI. */
+#cess-monitor .cess-monitor-table{overflow-x:auto!important;overflow-y:auto!important;max-width:100%!important;scrollbar-width:auto!important}
+#cess-monitor .cess-monitor-table table{width:100%!important;min-width:1390px!important;table-layout:fixed!important;border-collapse:collapse!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(1){width:13%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(2){width:11%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(3){width:6%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(4){width:10%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(5){width:8%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(6){width:10%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(7){width:8%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(8){width:7%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(9){width:9%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(10){width:8%!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(11){width:6%!important;min-width:88px!important;max-width:none!important;text-align:center!important}
+#cess-monitor .cess-monitor-table tr>:nth-child(12){width:90px!important;min-width:90px!important;max-width:none!important;position:sticky!important;right:0!important;text-align:center!important;z-index:3!important;box-shadow:-3px 0 7px #263c431c!important}
+#cess-monitor .cess-monitor-table thead tr>:nth-child(12){z-index:5!important;background:#2c3f49!important;color:#fff!important}
+#cess-monitor .cess-monitor-table tbody tr>:nth-child(12){background:#fff!important}
+#cess-monitor .cess-monitor-table tbody tr:nth-child(even)>:nth-child(12){background:#f7f9f9!important}
+#cess-monitor .cess-monitor-table thead tr>:nth-child(11){white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;font-size:10px!important}
+#cess-monitor .cess-monitor-table td:nth-child(11){font-size:17px!important;overflow:visible!important}
+#cess-monitor .cess-monitor-table td:nth-child(12) button{display:block!important;width:72px!important;max-width:100%!important;margin:3px auto!important;padding:6px 3px!important;font-size:10px!important;white-space:nowrap!important}
+</style>
 </body></html>
