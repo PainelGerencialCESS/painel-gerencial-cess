@@ -1984,10 +1984,14 @@ async function cessSaveOne(r,changes){
  if(!admin){
   if(id==null)throw Error('Inclusão de registros por editores ainda não está habilitada.');
   let rpc=null,args=null;
-  if(r.grupo===specialGroups.rdi&&cessEditorModules.has('distribuicao_rdi')&&changes.every(k=>k==='descricao')){
-   rpc='cess_atualizar_distribuicao_rdi';args={p_id:id,p_dados:JSON.parse(r.descricao)};
-  }else if(r.grupo===specialGroups.adesoes&&cessEditorModules.has('adesoes')&&changes.every(k=>k==='descricao')){
-   rpc='cess_atualizar_adesao';args={p_id:id,p_dados:JSON.parse(r.descricao)};
+  if(r.grupo===specialGroups.rdi&&cessEditorModules.has('distribuicao_rdi')&&changes.every(k=>k==='descricao'||k==='item')){
+   const dados=JSON.parse(r.descricao);
+   if(String(r.item||'')!==String(dados.equipamento||''))throw Error('Nome do equipamento inconsistente com os dados da Distribuição RDI.');
+   rpc='cess_atualizar_distribuicao_rdi';args={p_id:id,p_dados:dados};
+  }else if(r.grupo===specialGroups.adesoes&&cessEditorModules.has('adesoes')&&changes.every(k=>k==='descricao'||k==='item')){
+   const dados=JSON.parse(r.descricao);
+   if(String(r.item||'')!==String(dados.equipamento||''))throw Error('Nome do equipamento inconsistente com os dados de Adesões.');
+   rpc='cess_atualizar_adesao';args={p_id:id,p_dados:dados};
   }else if(r.grupo==='GERAL'&&cessEditorModules.has('levantamento_geral')){
    rpc='cess_atualizar_levantamento_geral';args={p_id:id,p_alteracoes:Object.fromEntries(changes.map(k=>[k,r[k]]))};
   }else if(r.grupo==='GERAL'&&changes.length===1&&changes[0]==='estoque'&&cessEditorModules.has('estoque')){
