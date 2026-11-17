@@ -2007,13 +2007,29 @@ document.getElementById('report-pdf').addEventListener('click',makeReport);
 <style id="cess-trash-styles">
 #cess-trash-dialog{width:min(980px,96vw);max-width:980px;max-height:85vh}
 #cess-trash-dialog .modal{max-height:82vh;overflow:auto}
-#cess-trash-table{min-width:690px;width:100%;font-size:12px}
+#cess-trash-dialog .tablebox{overflow-x:hidden!important;width:100%;max-width:100%}
+#cess-trash-table{min-width:0!important;width:100%!important;max-width:100%;table-layout:fixed;font-size:12px}
+#cess-trash-table th:nth-child(1){width:15%}
+#cess-trash-table th:nth-child(2){width:32%}
+#cess-trash-table th:nth-child(3){width:39%}
+#cess-trash-table th:nth-child(4){width:14%}
+#cess-trash-table td{white-space:normal!important;overflow-wrap:anywhere;word-break:break-word}
+#cess-trash-table td:last-child,#cess-trash-table th:last-child{text-align:center}
+#cess-trash-table td:last-child button{max-width:100%;font-size:11px;padding:6px 7px}
+@media(max-width:600px){#cess-trash-table{font-size:10px}#cess-trash-table td,#cess-trash-table th{padding:6px 4px!important}#cess-trash-table td:last-child button{font-size:9px;padding:5px 3px}}
 #cess-trash-table td,#cess-trash-table th{padding:10px;overflow-wrap:anywhere}
 #cess-trash-table th{position:static}
 #cess-trash-table button{white-space:nowrap}
 #cess-trash-delete{background:#fff1f0;color:#9b303a;border-color:#e8a7a7;margin-right:auto}
 </style>
-<dialog id="cess-trash-dialog"><div class="modal"><h2>Lixeira de registros</h2><p class="muted">Acesso exclusivo da administração. Os registros podem ser restaurados sem perda das informações.</p><p id="cess-trash-status" role="status"></p><div class="tablebox"><table id="cess-trash-table"><thead><tr><th>Grupo</th><th>Equipamento / registro</th><th>Excluído em</th><th>Ação</th></tr></thead><tbody id="cess-trash-body"></tbody></table></div><div style="display:flex;justify-content:flex-end;margin-top:15px"><button id="cess-trash-close" type="button">Fechar</button></div></div></dialog>
+<dialog id="cess-trash-dialog"><div class="modal"><h2>Lixeira de registros</h2><p class="muted">Acesso exclusivo da administração. Os registros podem ser restaurados sem perda das informações.</p><div id="cess-trash-filters" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0">
+<label>Módulo<select id="cess-trash-module"><option value="">Todos os módulos</option></select></label>
+<label>Buscar equipamento / unidade<input id="cess-trash-search" type="search" placeholder="Digite para consultar"></label>
+<label>Responsável<input id="cess-trash-user" type="search" placeholder="Nome ou e-mail"></label>
+<label>Excluído a partir de<input id="cess-trash-from" type="date"></label>
+<label>Excluído até<input id="cess-trash-to" type="date"></label>
+<button type="button" id="cess-trash-clear" style="align-self:end">Limpar filtros</button>
+</div><p id="cess-trash-status" role="status"></p><div class="tablebox"><table id="cess-trash-table"><thead><tr><th>Grupo</th><th>Equipamento / registro</th><th>Exclusão / responsável</th><th>Ação</th></tr></thead><tbody id="cess-trash-body"></tbody></table></div><div style="display:flex;justify-content:flex-end;margin-top:15px"><button id="cess-trash-close" type="button">Fechar</button></div></div></dialog>
 <script id="cess-trash-ui">
 (()=>{
  const $=id=>document.getElementById(id), api=()=>window.CESS_TRASH_API;
@@ -2024,29 +2040,56 @@ document.getElementById('report-pdf').addEventListener('click',makeReport);
  const dialog=$('cess-trash-dialog'),status=$('cess-trash-status'),body=$('cess-trash-body');
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function access(){entry.style.display=api()?.isAdmin()?'':'none';}
+ function selectedId(){return (typeof specialView!=='undefined'&&specialView)?specialEditing:editing;}
  function syncDelete(){
-  const valid=api()?.isAdmin()&&$('dlg')?.open&&(typeof specialView!=='undefined'&&specialView?Boolean(specialEditing):Boolean(editing));
+  const id=selectedId();
+  const valid=Boolean($('dlg')?.open&&id&&api()?.canSend?.(id));
   del.style.display=valid?'':'none';
  }
  new MutationObserver(()=>{access();syncDelete()}).observe(document.body,{attributes:true,attributeFilter:['class']});
  new MutationObserver(syncDelete).observe($('dlg'),{attributes:true,attributeFilter:['open']});
  document.addEventListener('click',e=>{if(e.target.closest('[data-edit],[data-special-edit],#new'))setTimeout(syncDelete,0)},true);
  window.addEventListener('cess-trash-ready',access);access();
+ let trashRows=[];
+ const filters={module:$('cess-trash-module'),search:$('cess-trash-search'),user:$('cess-trash-user'),from:$('cess-trash-from'),to:$('cess-trash-to')};
+ function recordInfo(r){
+  const d=(r.dados&&typeof r.dados==='object')?r.dados:{};
+  const name=[r.item,r.equipamento,d.equipamento,d.nome_equipamento,d.descricao_equipamento,d.modalidade,d.tipo_equipamento,r.registro_id].find(x=>typeof x==='string'&&x.trim());
+  const unit=[r.unidade,d.unidade,d.nome_unidade,d.estabelecimento,d.municipio].find(x=>typeof x==='string'&&x.trim());
+  const id=r.id==null?'':' #'+r.id;
+  return {name:name||('Registro'+id),unit:unit||'',search:[name,unit,r.registro_id,r.grupo,r.id,JSON.stringify(d)].join(' ').toLocaleLowerCase('pt-BR')};
+ }
+ function renderTrash(){
+  const filtered=trashRows.filter(r=>{
+   const info=recordInfo(r),date=r.excluido_em?String(r.excluido_em).slice(0,10):'';
+   return (!filters.module.value||String(r.grupo||'')===filters.module.value)
+    &&(!filters.search.value||info.search.includes(filters.search.value.trim().toLocaleLowerCase('pt-BR')))
+    &&(!filters.user.value||String(r.excluido_por_email||'').toLocaleLowerCase('pt-BR').includes(filters.user.value.trim().toLocaleLowerCase('pt-BR')))
+    &&(!filters.from.value||date>=filters.from.value)
+    &&(!filters.to.value||date<=filters.to.value);
+  });
+  status.textContent=`${filtered.length} registro(s) encontrado(s) de ${trashRows.length} na Lixeira.`;
+  body.innerHTML=filtered.map(r=>{const info=recordInfo(r);return `<tr><td>${esc(r.grupo||'—')}</td><td><strong>${esc(info.name)}</strong>${info.unit?`<div style="margin-top:4px;color:#52636b;font-size:11px">${esc(info.unit)}</div>`:''}</td><td><strong>${esc(r.excluido_em?new Date(r.excluido_em).toLocaleString('pt-BR'):'—')}</strong><div style="margin-top:4px;color:#52636b;font-size:11px">${esc(r.excluido_por_email||'Responsável não identificado')}</div></td><td><button type="button" data-restore-id="${Number(r.id)}" data-restore-source="${esc(r.origem_lixeira||'registros_cess')}">Restaurar</button></td></tr>`}).join('');
+ }
  async function list(){
   status.textContent='Consultando registros excluídos…';body.innerHTML='';
-  try{const rows=await api().list();status.textContent=rows.length?rows.length+' registro(s) na Lixeira.':'A Lixeira está vazia.';
-   body.innerHTML=rows.map(r=>`<tr><td>${esc(r.grupo)}</td><td>${esc(r.item||r.registro_id||r.descricao?.slice(0,80)||'Registro')}</td><td>${esc(r.excluido_em?new Date(r.excluido_em).toLocaleString('pt-BR'):'—')}</td><td><button type="button" data-restore-id="${Number(r.id)}">Restaurar</button></td></tr>`).join('');
+  try{trashRows=await api().list();
+   const modules=[...new Set(trashRows.map(r=>String(r.grupo||'—')))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+   filters.module.innerHTML='<option value="">Todos os módulos</option>'+modules.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+   renderTrash();
   }catch(e){status.textContent='Falha ao consultar Lixeira: '+e.message}
  }
+ Object.values(filters).forEach(el=>el.addEventListener('input',renderTrash));
+ $('cess-trash-clear').addEventListener('click',()=>{Object.values(filters).forEach(el=>el.value='');renderTrash()});
  entry.addEventListener('click',()=>{if(!api()?.isAdmin())return;menu.parentElement.open=false;dialog.showModal();list()});
  $('cess-trash-close').addEventListener('click',()=>dialog.close());
  body.addEventListener('click',async e=>{const b=e.target.closest('[data-restore-id]');if(!b)return;if(!api()?.isAdmin())return;
   if(!confirm('Restaurar este registro para o módulo original?'))return;b.disabled=true;
-  try{await api().restore(Number(b.dataset.restoreId));await list();alert('Registro restaurado no Supabase.')}catch(err){alert('Não foi possível restaurar: '+err.message)}finally{b.disabled=false}
+  try{await api().restore(Number(b.dataset.restoreId),b.dataset.restoreSource);await list();alert('Registro restaurado no Supabase.')}catch(err){alert('Não foi possível restaurar: '+err.message)}finally{b.disabled=false}
  });
  del.addEventListener('click',async()=>{
-  if(!api()?.isAdmin())return alert('Acesso restrito à administração.');
-  const id=(typeof specialView!=='undefined'&&specialView)?specialEditing:editing;
+  const id=selectedId();
+  if(!api()?.canSend?.(id))return alert('Sem autorização para excluir este registro.');
   if(!id)return alert('Selecione um registro existente.');
   if(!confirm('Enviar este registro para a Lixeira? Ele poderá ser restaurado pela administração.'))return;
   del.disabled=true;
@@ -2308,7 +2351,16 @@ window.CESS_RDI_CLOUD={
  async restore(id){return this.rpc('cess_restaurar_monitoramento_rdi',{p_id:id})}
 };
 
-function setStatus(message){state.textContent='● '+message;}
+let cessStatusClearTimer=null;
+function setStatus(message){
+ if(cessStatusClearTimer){clearTimeout(cessStatusClearTimer);cessStatusClearTimer=null;}
+ const success=message.startsWith('Salvo com sucesso no Supabase');
+ const failure=message.startsWith('Erro ao salvar');
+ const pending=message.startsWith('Alterações pendentes')||message.startsWith('Salvando');
+ state.textContent=(success?'✓ ':failure?'⚠ ':pending?'◷ ':'● ')+message;
+ state.style.color=success?'#267447':failure?'#b42318':pending?'#91600c':'';
+ if(success){const shown=message;cessStatusClearTimer=setTimeout(()=>{if(state.textContent==='✓ '+shown){state.textContent='● Nenhuma alteração pendente';state.style.color='';}cessStatusClearTimer=null;},6500);}
+}
 function applyAccess(){
   // Consulta pública; somente usuários autorizados podem alterar registros.
   el('protected-panel').hidden=!(authUser&&cessAuthorized);el('access-notice').hidden=!!(authUser&&cessAuthorized);el('access-notice').textContent=authUser&&!cessAuthorized?'Acesso não autorizado. Solicite à administração a ativação do seu cadastro.':'Acesso ao Painel Gerencial CESS. Entre com seu e-mail e senha autorizados para consultar os dados.';
@@ -2367,23 +2419,33 @@ function changedFields(before,after){return Object.keys(after).filter(k=>String(
 async function cessSaveOne(r,changes){
  const key=String(r.registro_id),id=remoteIds.get(key);
  if(!admin){
-  if(id==null)throw Error('Inclusão de registros por editores ainda não está habilitada.');
-  let rpc=null,args=null;
-  if(r.grupo===specialGroups.rdi&&cessEditorModules.has('distribuicao_rdi')&&changes.every(k=>k==='descricao')){
-   rpc='cess_atualizar_distribuicao_rdi';args={p_id:id,p_dados:JSON.parse(r.descricao)};
-  }else if(r.grupo===specialGroups.adesoes&&cessEditorModules.has('adesoes')&&changes.every(k=>k==='descricao')){
-   rpc='cess_atualizar_adesao';args={p_id:id,p_dados:JSON.parse(r.descricao)};
-  }else if(r.grupo==='GERAL'&&cessEditorModules.has('levantamento_geral')){
-   rpc='cess_atualizar_levantamento_geral';args={p_id:id,p_alteracoes:Object.fromEntries(changes.map(k=>[k,r[k]]))};
-  }else if(r.grupo==='GERAL'&&changes.length===1&&changes[0]==='estoque'&&cessEditorModules.has('estoque')){
-   rpc='cess_atualizar_estoque';args={p_id:id,p_estoque:r.estoque};
-  }else if(r.grupo==='GERAL'&&changes.length===1&&changes[0]==='saque'&&cessEditorModules.has('saques')){
-   rpc='cess_atualizar_saque';args={p_id:id,p_saque:r.saque};
-  }else throw Error('Alteração não autorizada ou ainda não integrada para este módulo ('+changes.join(', ')+'). Nenhum outro campo foi enviado.');
-  const {data:ok,error}=await supabase.rpc(rpc,args);
+  const moduleByGroup={GERAL:'levantamento_geral',RDI:'radiodiagnostico',
+   [specialGroups.rdi]:'distribuicao_rdi',[specialGroups.adesoes]:'adesoes'};
+  const moduleName=moduleByGroup[r.grupo];
+  if(!moduleName)throw Error('Módulo não reconhecido para salvamento.');
+  // Permissões limitadas a Estoque/Saques mantêm suas funções específicas.
+  if(id!=null&&r.grupo==='GERAL'&&changes.length===1&&changes[0]==='estoque'&&
+     !cessEditorModules.has('levantamento_geral')&&cessEditorModules.has('estoque')){
+   const {data:ok,error}=await supabase.rpc('cess_atualizar_estoque',{p_id:id,p_estoque:r.estoque});
+   if(error)throw error;if(ok!==true)throw Error('O Supabase não confirmou a alteração do Estoque.');return id;
+  }
+  if(id!=null&&r.grupo==='GERAL'&&changes.length===1&&changes[0]==='saque'&&
+     !cessEditorModules.has('levantamento_geral')&&cessEditorModules.has('saques')){
+   const {data:ok,error}=await supabase.rpc('cess_atualizar_saque',{p_id:id,p_saque:r.saque});
+   if(error)throw error;if(ok!==true)throw Error('O Supabase não confirmou a alteração do Saque.');return id;
+  }
+  if(!cessEditorModules.has(moduleName))throw Error('Sem autorização para salvar no módulo '+moduleName+'. Solicite à administradora a permissão correspondente.');
+  const special=r.grupo===specialGroups.rdi||r.grupo===specialGroups.adesoes;
+  const allowed=['item','fase','orgao','sei','descricao','rp','saque','estoque','observacoes','atualizacao','origem'];
+  const fields=id==null?(special?['descricao']:allowed):(special?['descricao']:changes.filter(k=>allowed.includes(k)));
+  if(!fields.length)throw Error('Não há campos autorizados para salvar.');
+  const payload=Object.fromEntries(fields.map(k=>[k,r[k]??'']));
+  const {data:savedId,error}=await supabase.rpc('cess_salvar_registro_modulo',{
+   p_registro_id:key,p_grupo:r.grupo,p_dados:payload
+  });
   if(error)throw error;
-  if(ok!==true)throw Error('O servidor não confirmou a atualização.');
-  return id;
+  if(!Number.isSafeInteger(Number(savedId))||Number(savedId)<=0)throw Error('O Supabase não confirmou o identificador salvo.');
+  return Number(savedId);
  }
  const query=id!=null?supabase.from('registros_cess').update(r).eq('id',id).select('id'):supabase.from('registros_cess').insert(r).select('id');
  const result=await Promise.race([query,new Promise((_,reject)=>setTimeout(()=>reject(Error('Tempo limite de comunicação com o Supabase.')),20000))]);
@@ -2397,10 +2459,10 @@ async function save(){
  if(writing){setStatus('Uma gravação já está em andamento.');return false}
  const all=[...data.map(x=>encode(x)),...RDI_DISTRIBUICAO.map(x=>encode(x,'rdi')),...ADESOES.map(x=>encode(x,'adesoes'))];
  const pending=all.map(r=>({r,changes:changedFields(cessOriginalRows.get(String(r.registro_id)),encodeSnapshot(r))})).filter(x=>x.changes.length||!cessOriginalRows.has(String(x.r.registro_id)));
- if(!pending.length){setStatus('Nenhuma alteração pendente.');return true}
+ if(!pending.length){setStatus('Nenhuma alteração pendente');return true}
  writing=true;let completed=0;
  const saveButton=document.getElementById('save-local');if(saveButton)saveButton.disabled=true;
- setStatus('Salvando '+pending.length+' alteração(ões)…');
+ setStatus('Alterações pendentes — salvando '+pending.length+' alteração(ões)…');
  try{
   // Salva apenas registros modificados, sem regravar centenas de linhas intactas.
   for(const {r,changes} of pending){
@@ -2410,9 +2472,9 @@ async function save(){
    completed++;setStatus('Salvando: '+completed+' de '+pending.length+'…');
   }
   localStorage.setItem(SAVE_DATE_KEY,new Date().toISOString());showSaveStatus();
-  setStatus('Salvo no Supabase: '+completed+' alteração(ões) confirmada(s).');return true;
+  setStatus('Salvo com sucesso no Supabase — '+completed+' alteração(ões) confirmada(s).');return true;
  }catch(e){
-  const msg=e?.message||String(e);setStatus('Falha ao salvar ('+completed+' de '+pending.length+'): '+msg);
+  const msg=e?.message||String(e);setStatus('Erro ao salvar ('+completed+' de '+pending.length+'): '+msg);
   alert('A gravação não foi concluída. '+completed+' de '+pending.length+' alterações confirmadas.\n'+msg);
   return false;
  }finally{writing=false;if(saveButton)saveButton.disabled=false}
@@ -2421,9 +2483,18 @@ window.CESS_CLOUD={save(){clearTimeout(saveTimer);saveTimer=setTimeout(save,350)
 // Lixeira CESS: operações exclusivamente via RPC com validação de administrador no servidor.
 window.CESS_TRASH_API={
  isAdmin:()=>Boolean(admin&&authUser),
- async list(){if(!admin||!authUser)throw Error('Acesso restrito à administração');const {data,error}=await supabase.rpc('cess_listar_lixeira');if(error)throw error;return data||[]},
+ canSend(registroId){
+  if(!authUser||!editor||!registroId)return false;
+  const special=typeof specialView!=='undefined'&&Boolean(specialView);
+  const group=special?(specialView==='rdi'?'__CESS_RDI_DISTRIBUICAO__':'__CESS_ADESOES__'):
+    data.find(r=>String(r.id)===String(registroId))?.grupo;
+  const permission={GERAL:'levantamento_geral',RDI:'radiodiagnostico',
+    __CESS_RDI_DISTRIBUICAO__:'distribuicao_rdi',__CESS_ADESOES__:'adesoes'}[group];
+  return Boolean(permission&&(admin||cessEditorModules.has(permission)));
+ },
+ async list(){if(!admin||!authUser)throw Error('Acesso restrito à administração');const {data,error}=await supabase.rpc('cess_listar_lixeira_unificada');if(error)throw error;return data||[]},
  async send(registroId){
-  if(!admin||!authUser)throw Error('Acesso restrito à administração');
+  if(!this.canSend(registroId))throw Error('Sem autorização para excluir este registro');
   const dbId=remoteIds.get(String(registroId));
   if(dbId==null)throw Error('Registro não localizado no Supabase. Sincronize o painel antes de excluir.');
   const {data:ok,error}=await supabase.rpc('cess_enviar_lixeira',{p_registro_id:dbId});
@@ -2435,7 +2506,7 @@ window.CESS_TRASH_API={
   render();renderSpecial();
   return true;
  },
- async restore(dbId){if(!admin||!authUser)throw Error('Acesso restrito à administração');const {data:ok,error}=await supabase.rpc('cess_restaurar_lixeira',{p_registro_id:dbId});if(error)throw error;if(ok!==true)throw Error('Restauração não confirmada.');await load();return true}
+ async restore(dbId,source='registros_cess'){if(!admin||!authUser)throw Error('Acesso restrito à administração');if(source==='monitoramento_rdi_cess'){const {error}=await supabase.rpc('cess_restaurar_monitoramento_rdi',{p_id:dbId});if(error)throw error;return true;}if(source!=='registros_cess')throw Error('Origem não reconhecida.');const {data:ok,error}=await supabase.rpc('cess_restaurar_lixeira',{p_registro_id:dbId});if(error)throw error;if(ok!==true)throw Error('Restauração não confirmada.');await load();return true}
 };
 window.dispatchEvent(new Event('cess-trash-ready'));
 
