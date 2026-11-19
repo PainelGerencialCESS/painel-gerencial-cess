@@ -3110,7 +3110,7 @@ function brDate(v){const d=parseDate(v);return d?`${String(d.getDate()).padStart
 function guarantee(r){const d=parseDate(r.data_os||r.data_instalacao);if(!d)return 'unknown';const end=new Date(d.getFullYear()+2,d.getMonth(),d.getDate());const today=new Date();today.setHours(0,0,0,0);return today<=end?'yes':'no'}
 function guaranteeIcon(r){const g=guarantee(r);return `<span class="cess-warranty cess-warranty-${g}" title="${g==='yes'?'Em garantia':g==='no'?'Fora da garantia':'Data da instalação/O.S. não informada'}">${g==='yes'?'✓':g==='no'?'✕':'?'}</span>`}
 function highComplexity(){const groups=[['Tomógrafos',/TOM[ÓO]GRAF/],['Ressonâncias',/RESSON[ÂA]NC/],['Angiógrafos',/ANGI[ÓO]GRAF/],['Aceleradores lineares',/ACELERADOR.*LINEAR/]];return groups.map(([label,re])=>[label,DATA.filter(r=>re.test(norm(r.equipamento))).length])}
-function overview(){cards('cess-monitor-kpis',totals());const target=$('cess-monitor-overview-kpis');target.innerHTML='';const left=document.createElement('div');left.className='cess-overview-left';const right=document.createElement('div');right.className='cess-overview-high';const base=totals();base.push(['Em garantia',cloudLoaded?DATA.filter(r=>guarantee(r)==='yes').length:'…']);left.innerHTML=base.map(([name,num])=>`<div class="cess-monitor-kpi"><span>${esc(name)}</span><strong>${num}</strong></div>`).join('');right.innerHTML='<div class="cess-high-title">EQUIPAMENTOS DE ALTA COMPLEXIDADE</div><div class="cess-high-grid">'+highComplexity().map(([name,num])=>`<div class="cess-high-tile"><span>${esc(name)}</span><strong>${num}</strong></div>`).join('')+'</div>';target.append(left,right)}
+function overview(){cards('cess-monitor-kpis',totals());const target=$('cess-monitor-overview-kpis');target.innerHTML='';const left=document.createElement('div');left.className='cess-overview-left';const right=document.createElement('div');right.className='cess-overview-high';const base=totals();base.push(['Em garantia',DATA.some(r=>parseDate(r.data_os||r.data_instalacao))?DATA.filter(r=>guarantee(r)==='yes').length:'—']);left.innerHTML=base.map(([name,num])=>`<div class="cess-monitor-kpi"><span>${esc(name)}</span><strong>${num}</strong></div>`).join('');right.innerHTML='<div class="cess-high-title">EQUIPAMENTOS DE ALTA COMPLEXIDADE</div><div class="cess-high-grid">'+highComplexity().map(([name,num])=>`<div class="cess-high-tile"><span>${esc(name)}</span><strong>${num}</strong></div>`).join('')+'</div>';target.append(left,right)}
 function cards(target,arr){$(target).innerHTML=arr.map(([name,num])=>'<div class="cess-monitor-kpi"><span>'+esc(name)+'</span><strong>'+num+'</strong></div>').join('')}
 function totals(){const count=x=>DATA.filter(r=>groupStatus(r.status)===x).length;return [['Equipamentos',DATA.length],['Em uso',count('Em uso')],['Inoperantes',count('Inoperantes')],['Outras situações',count('Outras situações')]]}
 const selectedUnits=new Set();function syncMultiUnits(){const all=[...new Set(DATA.map(x=>x.unidade).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));for(const v of [...selectedUnits])if(!all.includes(v))selectedUnits.delete(v);const opts=$('cess-multi-unit-options');opts.replaceChildren();for(const v of all){const label=document.createElement('label'),cb=document.createElement('input');cb.type='checkbox';cb.checked=selectedUnits.has(v);cb.addEventListener('change',()=>{if(cb.checked)selectedUnits.add(v);else selectedUnits.delete(v);updateMultiLabel();render()});label.append(cb,document.createTextNode(v));opts.append(label)}updateMultiLabel()}function updateMultiLabel(){const n=selectedUnits.size;$('cess-multi-unit-toggle').textContent=n===0?'Todas as unidades ▾':n===1?[...selectedUnits][0]+' ▾':n+' unidades selecionadas ▾'}function setupMultiUnits(){$('cess-multi-unit-toggle').addEventListener('click',()=>{const m=$('cess-multi-unit-menu');m.hidden=!m.hidden;$('cess-multi-unit-toggle').setAttribute('aria-expanded',String(!m.hidden))});$('cess-multi-unit-all').addEventListener('click',()=>{selectedUnits.clear();syncMultiUnits();render()});$('cess-multi-unit-clear').addEventListener('click',()=>{selectedUnits.clear();syncMultiUnits();render()});document.addEventListener('click',e=>{if(!e.target.closest('#cess-multi-unit')){$('cess-multi-unit-menu').hidden=true;$('cess-multi-unit-toggle').setAttribute('aria-expanded','false')}})}function init(){overview();setupMultiUnits();for(const [id,key] of [['cess-monitor-unit','unidade'],['cess-monitor-equip','equipamento'],['cess-monitor-status','status']]){const sel=$(id);[...new Set(DATA.map(x=>x[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(v=>sel.add(new Option(v,v)));sel.addEventListener('change',render)}syncMultiUnits();$('cess-monitor-search').addEventListener('input',render);$('cess-monitor-csv').addEventListener('click',exportCsv);render()}
@@ -3638,7 +3638,17 @@ const init=()=>{
 const table='cess_unidades_colaboradores';
 const recordId=r=>encodeURIComponent(String(r.unidade).trim().toLowerCase())+'::'+encodeURIComponent(String(r.responsavel).trim().toLowerCase());
 async function client(){if(db)return db;const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');db=createClient('https://gnbkyeawqocglnifxenz.supabase.co','sb_publishable_Ft3DeW5IxI2qq5dHt-lrPw_ux-FQ0YG');return db}
-async function permission(){const c=await client();const {data:{user},error}=await c.auth.getUser();if(error||!user)return false;const q=await c.from('usuarios_cess').select('perfil,ativo').eq('id',user.id).maybeSingle();if(q.error)throw q.error;return q.data?.ativo===true&&q.data?.perfil==='administrador'}
+async function permission(){
+ const c=await client();const {data:{user},error}=await c.auth.getUser();if(error||!user)return false;
+ const q=await c.from('usuarios_cess').select('perfil,ativo').eq('id',user.id).maybeSingle();if(q.error)throw q.error;
+ if(q.data?.ativo!==true)return false;
+ if(q.data.perfil==='administrador')return true;
+ if(q.data.perfil!=='editor')return false;
+ const perm=await c.from('permissoes_usuarios_cess').select('perfil,ativo,modulos_edicao').eq('usuario_id',user.id).maybeSingle();
+ if(perm.error)throw perm.error;
+ const mods=perm.data?.modulos_edicao;
+ return perm.data?.ativo===true&&perm.data?.perfil==='editor'&&Array.isArray(mods)&&mods.includes('planejamento_equipe');
+}
 const notice=t=>{const n=document.getElementById('cess-unit-cloud-status');if(n)n.textContent=t};
 function adminUi(){const f=document.getElementById('cess-unit-form');if(f)f.hidden=!isAdmin;document.querySelectorAll('#cess-unit-list [data-unit-remove]').forEach(x=>x.hidden=!isAdmin);const imp=document.getElementById('cess-unit-import');if(imp)imp.hidden=!isAdmin}
 async function refreshCloud(){try{const c=await client();isAdmin=await permission();const {data,error}=await c.from(table).select('id,dados').order('id');if(error)throw error;rows=(data||[]).map(x=>x.dados).filter(x=>x&&x.unidade&&x.responsavel);cloudReady=true;notice('Sincronizado com Supabase · '+rows.length+' vínculo(s)');draw();adminUi()}catch(e){cloudReady=false;isAdmin=false;rows=[];draw();adminUi();notice('Sincronização indisponível: '+e.message+' · Backup local preservado')}}
@@ -3647,7 +3657,7 @@ async function deleteRecord(r){if(!cloudReady||!isAdmin)throw Error('Acesso rest
 
  try{const data=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(data))localRows=data.filter(x=>x&&x.unidade&&x.responsavel&&['GD','GI','Policlínica'].includes(x.tipo))}catch{}
  const section=document.createElement('section');section.id='cess-team-responsibilities';
- section.innerHTML=`<div class="cess-units-top"><strong>Unidades sob responsabilidade da equipe</strong><div class="cess-unit-stats"><span class="cess-unit-stat">GD <strong id="cess-gd-count">0</strong></span><span class="cess-unit-stat">GI <strong id="cess-gi-count">0</strong></span><span class="cess-unit-stat">Policlínicas <strong id="cess-poli-count">0</strong></span><span class="cess-unit-stat">Total <strong id="cess-total-count">0</strong></span></div></div><details><summary>Cadastrar e consultar unidades por colaborador</summary><p class="cess-unit-note">Cadastre uma unidade e seu responsável. Cada unidade é contada uma única vez no total, mesmo que tenha mais de um responsável.</p><form id="cess-unit-form"><input id="cess-unit-name" placeholder="Nome da unidade" aria-label="Nome da unidade" required maxlength="180"><select id="cess-unit-type" aria-label="Tipo de unidade"><option value="GD">GD</option><option value="GI">GI</option><option value="Policlínica">Policlínica</option></select><input id="cess-unit-person" placeholder="Colaborador responsável" aria-label="Colaborador responsável" list="cess-unit-people" required maxlength="120"><datalist id="cess-unit-people"></datalist><select id="cess-unit-role" aria-label="Função do colaborador" required><option value="Engenheiro Clínico">Engenheiro Clínico</option><option value="Técnico de Monitoramento">Técnico de Monitoramento</option></select><button type="submit">Vincular unidade</button><div class="cess-visit-entry"><label>Visita realizada? <select id="cess-unit-visited"><option value="">Selecionar</option><option value="Sim">Sim</option><option value="Não">Não</option></select></label><label id="cess-unit-visit-date-label" hidden>Data da visita<input id="cess-unit-visit-date" type="date" aria-label="Data da visita"></label></div></form><div class="cess-unit-list" id="cess-unit-list"></div><p class="cess-unit-note"><span id="cess-unit-cloud-status">Conectando ao Supabase...</span> <button type="button" id="cess-unit-import" hidden>Importar vínculos deste navegador</button></p></details>`;
+ section.innerHTML=`<div class="cess-units-top"><strong>Unidades sob responsabilidade da equipe</strong><div class="cess-unit-stats"><span class="cess-unit-stat">GD <strong id="cess-gd-count">0</strong></span><span class="cess-unit-stat">GI <strong id="cess-gi-count">0</strong></span><span class="cess-unit-stat">Policlínicas <strong id="cess-poli-count">0</strong></span><span class="cess-unit-stat">Total <strong id="cess-total-count">0</strong></span></div></div><details><summary>Cadastrar e consultar unidades por colaborador</summary><p class="cess-unit-note">Cadastre uma unidade e seu responsável. Cada unidade é contada uma única vez no total, mesmo que tenha mais de um responsável.</p><form id="cess-unit-form"><input id="cess-unit-name" placeholder="Nome da unidade" aria-label="Nome da unidade" required maxlength="180"><select id="cess-unit-type" aria-label="Tipo de unidade"><option value="GD">GD</option><option value="GI">GI</option><option value="Policlínica">Policlínica</option></select><input id="cess-unit-person" placeholder="Colaborador responsável" aria-label="Colaborador responsável" list="cess-unit-people" required maxlength="120"><datalist id="cess-unit-people"></datalist><select id="cess-unit-role" aria-label="Função do colaborador" required><option value="Engenheiro Clínico">Engenheiro Clínico</option><option value="Técnico de Monitoramento">Técnico de Monitoramento</option></select><button type="submit">Vincular unidade</button><div class="cess-visit-entry"><label>Visita realizada? <select id="cess-unit-visited"><option value="">Selecionar</option><option value="Sim">Sim</option><option value="Não">Não</option></select></label><label id="cess-unit-visit-date-label" hidden>Data da visita<input id="cess-unit-visit-date" type="date" aria-label="Data da visita"></label></div></form><div class="cess-unit-list" id="cess-unit-list"></div><p class="cess-unit-note"><span id="cess-unit-cloud-status">Conectando ao Supabase...</span> <button type="button" id="cess-unit-import" hidden style="display:none!important">Importar vínculos deste navegador</button></p></details>`;
  kpis.insertAdjacentElement('afterend',section);
  const unitDetails=section.querySelector('details');
  if(unitDetails){unitDetails.id='cess-unit-register-toggle';kpis.insertAdjacentElement('beforebegin',section);}
@@ -3694,7 +3704,7 @@ async function deleteRecord(r){if(!cloudReady||!isAdmin)throw Error('Acesso rest
   const names=new Set(rows.map(x=>x.responsavel));const select=byId('cess-team-person');if(select)for(const op of select.options)if(op.value)names.add(op.value);
   const dl=byId('cess-unit-people');dl.replaceChildren();for(const name of [...names].sort((a,b)=>a.localeCompare(b,'pt-BR'))){const op=document.createElement('option');op.value=name;dl.append(op)}
  }
- byId('cess-unit-form').addEventListener('submit',async e=>{e.preventDefault();if(!isAdmin||!cloudReady)return alert('Acesso restrito ao administrador. Aguarde a sincronização.');const unidade=byId('cess-unit-name').value.trim(),tipo=byId('cess-unit-type').value,responsavel=byId('cess-unit-person').value.trim(),funcao=byId('cess-unit-role').value;if(!unidade||!responsavel)return;
+ byId('cess-unit-form').addEventListener('submit',async e=>{e.preventDefault();if(!isAdmin||!cloudReady)return alert('Acesso restrito a usuários autorizados para Planejamento de Equipe. Aguarde a sincronização.');const unidade=byId('cess-unit-name').value.trim(),tipo=byId('cess-unit-type').value,responsavel=byId('cess-unit-person').value.trim(),funcao=byId('cess-unit-role').value;if(!unidade||!responsavel)return;
   const clash=rows.find(r=>norm(r.unidade)===norm(unidade)&&r.tipo!==tipo);if(clash){alert('Esta unidade já está cadastrada como '+clash.tipo+'. Corrija a classificação antes de adicionar outro responsável.');return}
   if(rows.some(r=>norm(r.unidade)===norm(unidade)&&norm(r.responsavel)===norm(responsavel))){alert('Este vínculo já está cadastrado.');return}
   const visita=byId('cess-unit-visited')?.value||'';const visitaData=visita==='Sim'?(byId('cess-unit-visit-date')?.value||''):'';const visitaObs='';if(visita==='Sim'&&!visitaData){alert('Informe a data da visita realizada.');byId('cess-unit-visit-date')?.focus();return;}try{await upsertRecord({unidade,tipo,responsavel,funcao,visita,visitaData,visitaObs});byId('cess-unit-name').value='';byId('cess-unit-person').value='';byId('cess-unit-visit-date').value=''}catch(err){alert('Falha ao salvar: '+err.message)}});
@@ -4332,3 +4342,57 @@ table tbody td.cess-equip-unidade-13 :is(span,strong,b,div,a,small) {
 }
 #cess-monitor > .cess-monitor-heading{font-size:22px!important;font-weight:750!important;line-height:1.25!important}
 </style>
+
+<style id="cess-vigencia-shared-20261119">
+/* Vigência: keep the last column visible in both sheets for viewers and editors. */
+body #cess-main-sheet .tablebox table th:last-child,
+body #cess-main-sheet .tablebox table td:last-child,
+body #protected-panel .tablebox table th:last-child,
+body #protected-panel .tablebox table td:last-child{display:table-cell!important;visibility:visible!important}
+</style>
+<script id="cess-warranty-cloud-20261119">
+(()=>{
+ 'use strict';
+ let busy=false,lastSuccess=0;
+ const label='Em garantia';
+ function parse(v){
+   if(!v)return null;
+   const t=String(v).trim(),m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+   const iso=m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:t.slice(0,10);
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return null;
+   const [y,mo,d]=iso.split('-').map(Number),date=new Date(y,mo-1,d);
+   return date.getFullYear()===y&&date.getMonth()===mo-1&&date.getDate()===d?date:null;
+ }
+ function update(n){
+   document.querySelectorAll('#cess-monitor-overview-kpis .cess-monitor-kpi').forEach(card=>{
+     if(card.querySelector('span')?.textContent.trim()===label){
+       const value=card.querySelector('strong');if(value)value.textContent=String(n);
+     }
+   });
+ }
+ async function sync(){
+   if(busy||!window.CESS_AUTH?.isSignedIn?.()||!window.CESS_RDI_CLOUD?.list)return;
+   if(Date.now()-lastSuccess<15000)return;
+   busy=true;
+   try{
+     const rows=await window.CESS_RDI_CLOUD.list(false);
+     const today=new Date();today.setHours(0,0,0,0);
+     let count=0;
+     for(const row of rows){
+       const data=row.dados||{},date=parse(data.data_os||data.data_instalacao);
+       if(!date)continue;
+       const until=new Date(date.getFullYear()+2,date.getMonth(),date.getDate());
+       if(today<=until)count++;
+     }
+     update(count);lastSuccess=Date.now();
+   }catch(err){console.warn('Garantia: consulta Supabase não concluída',err)}
+   finally{busy=false}
+ }
+ document.addEventListener('click',e=>{
+   if(e.target.closest('#rdi-monitor-tab, .cess-nav, #cloud-login, #cloud-logout'))setTimeout(sync,600);
+ });
+ setInterval(sync,12000);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(sync,1200));
+ else setTimeout(sync,1200);
+})();
+</script>
