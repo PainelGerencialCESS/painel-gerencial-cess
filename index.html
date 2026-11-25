@@ -3339,11 +3339,12 @@ window.CESSPlanning={refresh};
 const migrate=document.createElement('button');migrate.type='button';migrate.textContent='Importar fichas locais';migrate.hidden=true;migrate.title='Importa as fichas deste navegador para o Supabase, somente se a tabela estiver vazia';migrate.style.cssText='font-size:10px;padding:6px 8px';/* Importação manual retirada da interface. */
 migrate.onclick=async()=>{if(!canDelete())return alert('Somente administradores podem importar.');const remote=await window.CESS_PLANNING_CLOUD.list();if(remote.length)return alert('Já existem fichas no Supabase. Importação bloqueada para evitar duplicações.');let local=[];try{local=JSON.parse(localStorage.getItem(key)||'null')||seed.map((r,i)=>({...r,_id:'seed-'+i}))}catch{local=seed.map((r,i)=>({...r,_id:'seed-'+i}))}local=local.filter(r=>r._id!=='__new__');if(!confirm('Importar '+local.length+' fichas locais para o Supabase? Verifique antes se esta é a versão correta.'))return;migrate.disabled=true;try{for(const r of local){await window.CESS_PLANNING_CLOUD.upsert({...r,_id:null})}await refresh();alert('Importação concluída. Confira as fichas e perfis.')}catch(e){alert('Importação interrompida: '+e.message+'; confira antes de repetir.')}finally{migrate.disabled=false}};
 function badge(st){const c=colors[st]||['#edf0f1','#345'];return '<span class="plan-status" style="background:'+c[0]+';color:'+c[1]+'">'+esc(st||'Não informado')+'</span>'}
-function field(label,value){return '<div class="plan-field"><small>'+esc(label)+'</small><span>'+esc(value||'—')+'</span></div>'}
+function cessPlanningPlain(v){return String(v??'').replace(/\[\[CESS:(?:RED|YELLOW|GREEN)\]\]/gi,'').replace(/\[\[\/CESS\]\]/gi,'')}
+function field(label,value){return '<div class="plan-field"><small>'+esc(label)+'</small><span>'+esc(['Pendências','Observações'].includes(label)?cessPlanningPlain(value||'—'):(value||'—'))+'</span></div>'}
 function detail(r){return '<div class="plan-fields">'+field('Unidade / Município',r.unidade)+field('Perfil',r.perfil)+field('Serviço',r.servico)+field('Implantador',r.implantador)+field('Apoio',r.apoio)+field('Eng. Clínico',r.engenheiro)+field('Previsão de inauguração',r.previsao)+field('Valor Total',brl(r.valor_total))+field('Valor RDI',brl(r.valor_rdi))+'<div class="plan-field"><small>Status</small>'+badge(r.status)+'</div><div class="plan-wide">'+field('Pendências',r.pendencias)+'</div><div class="plan-wide">'+field('Observações',r.observacoes)+'</div></div>'+'<div class="plan-edit-actions plan-compact-actions"><button type="button" class="plan-action-profile" data-profile="'+esc(r._id)+'">▤ Perfil Assistencial</button>'+(canEdit()?'<button type="button" class="plan-action-edit" data-edit="'+esc(r._id)+'">✎ Editar</button>':'')+(canDelete()&&r._id!=='__new__'?'<button type="button" class="plan-action-delete" data-delete="'+esc(r._id)+'">Excluir</button>':'')+'</div>'}
 function brl(v){const t=String(v??'').trim();return t?window.CESS_FINANCE.format(v):'—'}
 const labels={unidade:'Unidade / Município',perfil:'Perfil',servico:'Serviço',implantador:'Implantador',apoio:'Apoio',engenheiro:'Eng. Clínico',previsao:'Previsão de inauguração',valor_total:'Valor Total (R$)',valor_rdi:'Valor RDI (R$)',status:'Status',pendencias:'Pendências',observacoes:'Observações'};
-function form(r){return '<form id="plan-form" class="plan-edit-grid">'+Object.entries(labels).map(([k,l])=>'<label class="'+(['pendencias','observacoes'].includes(k)?'wide':'')+'">'+l+(k==='status'?'<select name="status">'+statuses.map(v=>'<option '+(r.status===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select>':['pendencias','observacoes'].includes(k)?'<textarea name="'+k+'" rows="3">'+esc(r[k])+'</textarea>':'<input name="'+k+'" value="'+esc(r[k])+'">')+'</label>').join('')+'<div class="wide plan-edit-actions"><button type="submit">Salvar ficha</button><button type="button" id="plan-cancel">Cancelar</button></div><div class="wide plan-muted">As alterações são gravadas no Supabase após confirmação.</div></form>'}
+function form(r){return '<form id="plan-form" class="plan-edit-grid">'+Object.entries(labels).map(([k,l])=>'<label class="'+(['pendencias','observacoes'].includes(k)?'wide':'')+'">'+l+(k==='status'?'<select name="status">'+statuses.map(v=>'<option '+(r.status===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select>':['pendencias','observacoes'].includes(k)?'<textarea name="'+k+'" rows="3">'+esc(cessPlanningPlain(r[k]))+'</textarea>':'<input name="'+k+'" value="'+esc(r[k])+'">')+'</label>').join('')+'<div class="wide plan-edit-actions"><button type="submit">Salvar ficha</button><button type="button" id="plan-cancel">Cancelar</button></div><div class="wide plan-muted">As alterações são gravadas no Supabase após confirmação.</div></form>'}
 function render(){
  const q=search.value.trim().toLocaleLowerCase('pt-BR'),f=filter.value;
  const shown=records.filter(r=>(!f||r.status===f)&&(!q||[r.unidade,r.perfil,r.servico,r.implantador,r.engenheiro,r.pendencias].some(v=>String(v||'').toLocaleLowerCase('pt-BR').includes(q))));
@@ -4937,7 +4938,7 @@ const nav=document.querySelector('#cess-planilhas .cess-menu');if(nav){const b=d
 'use strict';
 function norm(t){return (t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
 function eligible(el){
- if(!el.matches('textarea'))return false;
+ if(!el.matches('textarea')||el.closest('#plan-form'))return false;
  const label=el.closest('label');
  const hint=norm([el.name,el.id,el.placeholder,el.getAttribute('aria-label'),label?.textContent].join(' '));
  return /observ|descric|andamento/.test(hint);
@@ -5096,5 +5097,77 @@ new MutationObserver(records=>{
   field.dispatchEvent(new Event('change',{bubbles:true}));
   field.focus();capture();
  });
+})();
+</script>
+
+<style id="cess-planning-sem-destaque-20261125">#plan-form .cess-destaque-inline,#plan-form .cess-cp-highlight{display:none!important}</style>
+
+<style id="cess-fields-rich-style-20261125">
+#fields label.cess-rich-field>textarea{display:none!important}
+#fields .cess-rich-editor{min-height:90px;padding:12px;border:1px solid #cbd4d9;border-radius:7px;background:white;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;outline-offset:2px}
+#fields .cess-rich-toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px}
+#fields .cess-rich-toolbar button{border:1px solid #bdcbd2;border-radius:6px;padding:6px 9px;cursor:pointer}
+#fields .cess-rich-toolbar [data-color=RED]{background:#ffcaca}
+#fields .cess-rich-toolbar [data-color=YELLOW]{background:#fff0a4}
+#fields .cess-rich-toolbar [data-color=GREEN]{background:#c8eccd}
+#fields .cess-rich-toolbar [data-color=NONE]{background:#f4f6f8}
+#fields .cess-rich-field>.cess-destaque-inline{display:none!important}
+</style>
+<script id="cess-fields-rich-script-20261125">
+(function(){
+'use strict';
+const root=document.getElementById('fields');if(!root)return;
+const colors={RED:'#ffb6b6',YELLOW:'#ffe58a',GREEN:'#b7e7bd'};
+const pattern=/\[\[CESS:(RED|YELLOW|GREEN)\]\]([\s\S]*?)\[\[\/CESS\]\]/g;
+function create(field){
+ if(field.dataset.cessRichReady)return;
+ field.dataset.cessRichReady='1';
+ const label=field.closest('label');if(!label)return;
+ label.classList.add('cess-rich-field');
+ const editor=document.createElement('div');editor.className='cess-rich-editor';
+ editor.contentEditable=field.disabled?'false':'true';
+ editor.setAttribute('role','textbox');editor.setAttribute('aria-label',field.name==='descricao'?'Descrição do andamento formatada':'Observações formatadas');
+ const bar=document.createElement('div');bar.className='cess-rich-toolbar';
+ bar.innerHTML='<strong>Destacar trecho:</strong><button type="button" data-color="RED">Vermelho</button><button type="button" data-color="YELLOW">Amarelo</button><button type="button" data-color="GREEN">Verde</button><button type="button" data-color="NONE">Remover</button>';
+ field.after(editor);editor.after(bar);
+ function load(){
+  const value=field.value||'';editor.replaceChildren();let i=0;
+  for(const m of value.matchAll(pattern)){
+   if(m.index>i)editor.append(document.createTextNode(value.slice(i,m.index)));
+   const span=document.createElement('span');span.dataset.cessColor=m[1];span.style.backgroundColor=colors[m[1]];span.textContent=m[2];editor.append(span);i=m.index+m[0].length;
+  }
+  if(i<value.length)editor.append(document.createTextNode(value.slice(i)));
+ }
+ function encode(node){
+  if(node.nodeType===3)return node.nodeValue;
+  if(node.nodeType!==1)return '';
+  if(node.tagName==='BR')return '\n';
+  const value=Array.from(node.childNodes).map(encode).join('');
+  const color=node.dataset?.cessColor;
+  if(colors[color])return '[[CESS:'+color+']]'+value+'[[/CESS]]';
+  if(node!==editor&&(node.tagName==='DIV'||node.tagName==='P'))return value+'\n';
+  return value;
+ }
+ function sync(){field.value=encode(editor);field.dispatchEvent(new Event('input',{bubbles:true}))}
+ load();
+ editor.addEventListener('input',sync);
+ bar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
+ bar.addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-color]');if(!btn)return;
+  const sel=getSelection();
+  if(!sel||sel.isCollapsed||!sel.rangeCount||!editor.contains(sel.anchorNode)||!editor.contains(sel.focusNode)){alert('Selecione um trecho do texto.');return}
+  const range=sel.getRangeAt(0),frag=range.extractContents(),span=document.createElement('span');
+  span.append(frag);
+  if(btn.dataset.color!=='NONE'){span.dataset.cessColor=btn.dataset.color;span.style.backgroundColor=colors[btn.dataset.color]}
+  range.insertNode(span);sel.removeAllRanges();const r=document.createRange();r.selectNodeContents(span);sel.addRange(r);sync();
+ });
+ // Garante que o valor enviado pelo formulário é o texto formatado atual.
+ field.form?.addEventListener('submit',sync,true);
+}
+function mount(){
+ for(const field of root.querySelectorAll('textarea[name="descricao"],textarea[name="observacoes"]'))create(field);
+}
+mount();
+new MutationObserver(mount).observe(root,{childList:true,subtree:true});
 })();
 </script>
