@@ -3122,7 +3122,36 @@ async function cessSaveOne(r,changes){
  return result.data[0].id;
 }
 async function save(){
- if(!editor){alert('Sua conta não tem permissão de edição.');return false}
+ // Revalida a sessão e o perfil antes de bloquear o salvamento.
+ // Não concede acesso: a autorização por módulo e as políticas RLS continuam obrigatórias.
+ if(!editor){
+  try{
+   const {data:current,error:sessionError}=await supabase.auth.getUser();
+   if(sessionError)throw sessionError;
+   if(!current?.user||current.user.id!==authUser?.id)throw Error('Sessão inválida. Entre novamente.');
+   const {data:profile,error:profileError}=await supabase.from('usuarios_cess')
+    .select('perfil,ativo').eq('id',current.user.id).maybeSingle();
+   if(profileError)throw profileError;
+   const role=String(profile?.perfil||'').toLowerCase();
+   if(profile?.ativo!==true||!['administrador','editor'].includes(role))
+    throw Error('Seu perfil não possui autorização de edição.');
+   const isAdmin=role==='administrador';
+   if(!isAdmin){
+    const {data:permission,error:permissionError}=await supabase.from('permissoes_usuarios_cess')
+     .select('perfil,ativo,modulos_edicao').eq('usuario_id',current.user.id).maybeSingle();
+    if(permissionError)throw permissionError;
+    if(permission?.ativo!==true||permission?.perfil!=='editor'||
+       !Array.isArray(permission.modulos_edicao)||!permission.modulos_edicao.includes('levantamento_geral'))
+     throw Error('Sem autorização para editar Levantamento Geral.');
+    cessEditorModules=new Set(permission.modulos_edicao);
+   }
+   editor=true;admin=isAdmin;
+   applyAccess();
+  }catch(e){
+   alert('Não foi possível confirmar sua autorização para salvar: '+(e?.message||String(e)));
+   return false;
+  }
+ }
  if(!ready||loading){alert('Aguarde o carregamento dos dados.');return false}
  if(writing){setStatus('Uma gravação já está em andamento.');return false}
  const all=[...data.map(x=>encode(x)),...RDI_DISTRIBUICAO.map(x=>encode(x,'rdi')),...ADESOES.map(x=>encode(x,'adesoes'))];
