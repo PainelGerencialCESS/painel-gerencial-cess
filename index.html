@@ -2457,14 +2457,46 @@ function renderSpecial(){
  document.querySelector('#special-body').innerHTML=rows.map(r=>'<tr>'+cols.map(([k])=>'<td>'+ (k==='progresso'?progressCell(r):k==='situacao'?stageBadge(r[k]):specialView==='rdi'&&k==='vigencia'?ataVigencia(r[k]):k==='valor'?moneyBR(r[k]):k==='equipamento'?'<strong class="adesao-equip">'+esc(r[k]||'')+'</strong>':esc(k==='vencimento'?excelDate(r[k]):k==='sei'?formatSEI(r[k]):r[k]||''))+'</td>').join('')+`<td><button type="button" data-special-edit="${esc(r._id)}">Editar</button></td></tr>`).join('');
  document.querySelector('#special-count').textContent=rows.length+' registro(s) exibido(s)';
 }
-function editSpecial(id){specialEditing=id;let r=specialRows().find(x=>x._id===id)||{};let cols=specialView==='rdi'?[...specialCols.rdi.filter(([k])=>k!=='progresso'&&k!=='observacoes'),...STEPS,['observacoes','Observações']]:specialCols.adesoes;document.querySelector('#modtitle').textContent=id?'Editar registro — '+(specialView==='rdi'?'Distribuição RDI':'Adesões'):'Novo registro — '+(specialView==='rdi'?'Distribuição RDI':'Adesões');document.querySelector('#fields').innerHTML=cols.map(([k,label])=>{let v=r[k]??'',options=k==='situacao'?(specialView==='rdi'?[...FASES,'Entregue na Unidade','Entregue no CDS','EM FUNCIONAMENTO']:[...FASES,'Entregue na Unidade','Entregue no CDS']):STEPS.some(x=>x[0]===k)?STEP_OPTIONS:null;return `<label class="${k==='observacoes'?'wide':''}">${esc(label)}${options?`<select name="${k}">${options.map(o=>`<option value="${esc(o)}" ${o===v?'selected':''}>${esc(o||'Não informado')}</option>`).join('')}</select>`:k==='observacoes'?`<textarea name="${k}">${esc(v)}</textarea>`:`<input name="${k}" value="${esc(k==='vigencia'?excelDate(v):k==='valor'?moneyBR(v):v)}">`}</label>`}).join('');document.querySelector('#dlg').showModal()}
+function editSpecial(id){specialEditing=id;let r=specialRows().find(x=>x._id===id)||{};let cols=specialView==='rdi'?[...specialCols.rdi.filter(([k])=>k!=='progresso'&&k!=='observacoes'),...STEPS,['observacoes','Observações']]:specialCols.adesoes;document.querySelector('#modtitle').textContent=id?'Editar registro — '+(specialView==='rdi'?'Distribuição RDI':'Adesões'):'Novo registro — '+(specialView==='rdi'?'Distribuição RDI':'Adesões');document.querySelector('#fields').innerHTML=cols.map(([k,label])=>{let v=r[k]??'',options=k==='situacao'?(specialView==='rdi'?[...FASES,'Entregue na Unidade','Entregue no CDS','EM FUNCIONAMENTO']:[...FASES,'Entregue na Unidade','Entregue no CDS']):STEPS.some(x=>x[0]===k)?STEP_OPTIONS:null;return `<label class="${k==='observacoes'?'wide':''}">${esc(label)}${options?`<select name="${k}">${options.map(o=>`<option value="${esc(o)}" ${o===v?'selected':''}>${esc(o||'Não informado')}</option>`).join('')}</select>`:k==='observacoes'?`<textarea name="${k}">${esc(v)}</textarea>`:`<input name="${k}" value="${esc(k==='vigencia'?excelDate(v):k==='valor'?moneyBR(v):v)}">`}</label>`}).join('');
+ if(specialView==='rdi'){
+  const situation=document.querySelector('#fields select[name="situacao"]');
+  if(situation){
+   const dateLabel=document.createElement('label');
+   dateLabel.id='cess-rdi-data-entrega-label';
+   dateLabel.innerHTML='Data da Entrega <input type="date" name="data_entrega" aria-label="Data da Entrega">';
+   dateLabel.querySelector('input').value=/^\d{4}-\d{2}-\d{2}$/.test(String(r.data_entrega||''))?r.data_entrega:'';
+   situation.closest('label').insertAdjacentElement('afterend',dateLabel);
+   const updateDate=()=>{
+    const required=situation.value==='Entregue na Unidade';
+    dateLabel.hidden=!required;
+    dateLabel.querySelector('input').required=required;
+   };
+   situation.addEventListener('change',updateDate);
+   updateDate();
+  }
+ }
+ document.querySelector('#dlg').showModal()}
 document.querySelectorAll('[data-special]').forEach(b=>b.onclick=()=>{specialView=b.dataset.special;document.getElementById('cess-saque-finance').hidden=true;document.querySelectorAll('[data-view],[data-special]').forEach(x=>x.classList.toggle('active',x===b));document.querySelector('#special-section').style.display='block';document.querySelector('.special-table').classList.toggle('rdi-mode',specialView==='rdi');document.querySelector('.special-table').classList.toggle('adesoes-mode',specialView==='adesoes');document.querySelector('#special-title').textContent=specialView==='rdi'?'Distribuição de equipamentos RDI':'Processos de adesões às atas';document.querySelector('#special-note').textContent='Registros editáveis. As alterações são salvas neste navegador, sem sincronização com o SEI/BA.';document.querySelector('#special-search').value='';document.querySelectorAll('.cards,.layout,.filters').forEach(x=>x.style.display='none');document.querySelector('#rows').closest('.tablebox').style.display='none';renderSpecial()});
 document.querySelector('#special-search').addEventListener('input',renderSpecial);
 document.querySelector('#special-body').addEventListener('click',e=>{let b=e.target.closest('[data-special-edit]');if(b)editSpecial(b.dataset.specialEdit);let d=e.target.closest('[data-rdi-details]');if(d)showRdiDetails(d.dataset.rdiDetails)});
 
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{specialView=null;document.querySelector('#special-section').style.display='none';document.querySelectorAll('.cards,.layout,.filters').forEach(x=>x.style.display='');document.querySelector('#rows').closest('.tablebox').style.display='';document.querySelectorAll('[data-special]').forEach(x=>x.classList.remove('active'))}));
 const originalSubmit=document.querySelector('#editform').onsubmit;
-document.querySelector('#editform').onsubmit=e=>{if(!specialView){originalSubmit(e);return}e.preventDefault();let obj=Object.fromEntries(new FormData(e.target));if(Object.prototype.hasOwnProperty.call(obj,'valor'))obj.valor=moneyBR(obj.valor)==='—'?'':moneyBR(obj.valor);obj._id=specialEditing||('NOVO-'+Date.now());let rows=specialRows();let i=rows.findIndex(x=>x._id===specialEditing);if(i>=0)rows[i]={...rows[i],...obj};else rows.unshift(obj);saveSpecial();document.querySelector('#dlg').close();renderSpecial()};
+document.querySelector('#editform').onsubmit=e=>{if(!specialView){originalSubmit(e);return}e.preventDefault();
+ if(specialView==='rdi'){
+  const situation=e.target.elements.namedItem('situacao');
+  const date=e.target.elements.namedItem('data_entrega');
+  if(situation?.value==='Entregue na Unidade'&&!date?.value){
+   alert('Informe a Data da Entrega para a situação Entregue na Unidade.');
+   date?.focus();return;
+  }
+ }
+ let obj=Object.fromEntries(new FormData(e.target));
+ if(specialView==='rdi'&&specialEditing){
+  const previous=specialRows().find(x=>x._id===specialEditing);
+  if(previous?.data_entrega&&!obj.data_entrega)obj.data_entrega=previous.data_entrega;
+ }
+ if(Object.prototype.hasOwnProperty.call(obj,'valor'))obj.valor=moneyBR(obj.valor)==='—'?'':moneyBR(obj.valor);obj._id=specialEditing||('NOVO-'+Date.now());let rows=specialRows();let i=rows.findIndex(x=>x._id===specialEditing);if(i>=0)rows[i]={...rows[i],...obj};else rows.unshift(obj);saveSpecial();document.querySelector('#dlg').close();renderSpecial()};
 const oldSave=document.querySelector('#save-local').onclick;
 document.querySelector('#save-local').onclick=()=>{oldSave();saveSpecial()};
 </script><dialog class="rdi-detail" id="rdi-detail-dialog"><div class="detail-top"><h2 class="detail-title">Etapas de implantação</h2><button onclick="document.querySelector('#rdi-detail-dialog').close()" type="button">Fechar ×</button></div><p>Andamento das etapas de implantação do equipamento</p><div class="detail-steps"></div><div class="detail-bottom"><button class="detail-edit" type="button">Editar etapas</button></div></dialog><script id="cess-relatorios-pdf">
@@ -3316,7 +3348,7 @@ function render(){
  const q=search.value.trim().toLocaleLowerCase('pt-BR'),f=filter.value;
  const shown=records.filter(r=>(!f||r.status===f)&&(!q||[r.unidade,r.perfil,r.servico,r.implantador,r.engenheiro,r.pendencias].some(v=>String(v||'').toLocaleLowerCase('pt-BR').includes(q))));
  summary.innerHTML='<div class="plan-mini">Implantações <strong>'+records.length+'</strong></div>'+'<div class="plan-mini">Finalizadas / inauguradas <strong>'+records.filter(r=>['IMPLANTAÇÃO FINALIZADA','INAUGURADO'].includes(r.status)).length+'</strong></div>'+'<div class="plan-mini">Em andamento <strong>'+records.filter(r=>['EM OBRA','EM DETALHAMENTO','DETALHADO','ENVIO DOS ITENS EM ANDAMENTO','EM IMPLANTAÇÃO'].includes(r.status)).length+'</strong></div>';
- list.innerHTML='<div class="plan-legend"><span class="plan-legend-title">Legenda:</span>'+statuses.map(st=>'<span class="plan-legend-item">'+badge(st)+'</span>').join('')+'</div>' + '<div class="plan-table-heading"><span>UNIDADE</span><span>PERFIL</span><span>STATUS</span><span>PREVISÃO DE INAUGURAÇÃO</span><span>VALOR TOTAL</span><span></span></div>'+shown.map(r=>'<div class="plan-entry"><button type="button" class="plan-head" data-open="'+esc(r._id)+'" aria-expanded="'+(openId===r._id)+'"><span class="plan-name">'+esc(r.unidade||'Unidade não informada')+'</span><span class="plan-profile">'+esc(r.perfil||'—')+'</span><span>'+badge(r.status)+'</span><span class="plan-date">'+esc(r.previsao||'S/D')+'</span><span class="plan-value">'+(r.valor_total!==undefined && r.valor_total!==null && String(r.valor_total).trim()!==''?esc(brl(r.valor_total)):'—')+'</span><span class="plan-chevron">'+(openId===r._id?'▴':'▾')+'</span></button>'+(openId===r._id?'<div class="plan-detail">'+(editing===r._id?form(r):detail(r))+'</div>':'')+'</div>').join('')+(shown.length?'':'<p class="plan-muted">Nenhuma unidade encontrada.</p>');
+ list.innerHTML='<div class="plan-legend"><span class="plan-legend-title">Legenda:</span>'+statuses.map(st=>'<span class="plan-legend-item">'+badge(st)+'</span>').join('')+'</div>' + '<div class="plan-table-heading"><span>UNIDADE</span><span>SERVIÇO</span><span>PERFIL</span><span>STATUS</span><span>PREVISÃO DE INAUGURAÇÃO</span><span>VALOR TOTAL</span><span></span></div>'+shown.map(r=>'<div class="plan-entry"><button type="button" class="plan-head" data-open="'+esc(r._id)+'" aria-expanded="'+(openId===r._id)+'"><span class="plan-name">'+esc(r.unidade||'Unidade não informada')+'</span><span class="plan-service-cell" title="'+esc(r.servico||'—')+'">'+esc(r.servico||'—')+'</span><span class="plan-profile">'+esc(r.perfil||'—')+'</span><span>'+badge(r.status)+'</span><span class="plan-date">'+esc(r.previsao||'S/D')+'</span><span class="plan-value">'+(r.valor_total!==undefined && r.valor_total!==null && String(r.valor_total).trim()!==''?esc(brl(r.valor_total)):'—')+'</span><span class="plan-chevron">'+(openId===r._id?'▴':'▾')+'</span></button>'+(openId===r._id?'<div class="plan-detail">'+(editing===r._id?form(r):detail(r))+'</div>':'')+'</div>').join('')+(shown.length?'':'<p class="plan-muted">Nenhuma unidade encontrada.</p>');
  document.getElementById('plan-add').hidden=false;
 }
 list.addEventListener('click',e=>{const profile=e.target.closest('[data-profile]');if(profile){const r=records.find(x=>x._id===profile.dataset.profile);if(r)window.CESSPerfil.open(r,canEdit());return;}const del=e.target.closest('[data-delete]');if(del){if(!canDelete()){alert('Somente administradores podem excluir fichas.');return;}const r=records.find(x=>x._id===del.dataset.delete);if(!r)return;const name=r.unidade||'Unidade não informada';if(!confirm('Excluir definitivamente a implantação '+name+' do Supabase?\n\nA ficha e seu Perfil Assistencial serão excluídos para todos os usuários.'))return;(async()=>{try{await window.CESS_PLANNING_CLOUD.remove(r._id);await refresh();}catch(err){alert('Exclusão não realizada: '+err.message)}})();return;}const edit=e.target.closest('[data-edit]'),op=e.target.closest('[data-open]');if(edit){openId=edit.dataset.edit;editing=openId;render()}else if(op){openId=openId===op.dataset.open?null:op.dataset.open;editing=null;render()}else if(e.target.id==='plan-cancel'){editing=null;if(openId==='__new__'){openId=null;records=records.filter(r=>r._id!=='__new__')}render()}});
@@ -4950,5 +4982,119 @@ install(document.body);
 new MutationObserver(records=>{
  for(const r of records)for(const n of r.addedNodes)if(n.nodeType===1&&!n.classList?.contains('cess-destaque-inline'))install(n);
 }).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+
+
+<style id="cess-team-heading-white-20261125">
+/* Somente a tipografia do cabeçalho de Planejamento da Equipe CESS. */
+#cess-team-module .cess-team-head,
+#cess-team-module .cess-team-head h2,
+#cess-team-module .cess-team-head small {color:#ffffff!important;}
+</style>
+
+<style id="cess-planning-servico-coluna-20261125">
+/* Somente Planning de Implantações: sete colunas em largura integral. */
+#charts .planning-panel #planning-list .plan-table-heading,
+#charts .planning-panel #planning-list .plan-head {
+ display:grid!important;
+ grid-template-columns:minmax(0,1.55fr) minmax(0,1.25fr) minmax(0,.55fr) minmax(0,.85fr) minmax(0,1.18fr) minmax(0,1fr) 16px!important;
+ gap:6px!important;
+ box-sizing:border-box!important;
+ width:100%!important;
+ min-width:0!important;
+}
+#charts .planning-panel #planning-list,
+#charts .planning-panel .plan-entry {max-width:100%!important;min-width:0!important}
+#charts .planning-panel #planning-list .plan-head > span,
+#charts .planning-panel #planning-list .plan-table-heading > span {min-width:0!important;overflow-wrap:break-word}
+#charts .planning-panel #planning-list .plan-head .plan-service-cell{
+ display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;
+ white-space:nowrap!important;text-align:center!important;font-size:10px!important;
+}
+#charts .planning-panel #planning-list .plan-head .plan-name{text-align:left!important}
+@media(max-width:800px){
+ #charts .planning-panel #planning-list .plan-table-heading,
+ #charts .planning-panel #planning-list .plan-head{
+ grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,.5fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,.9fr) 12px!important;
+ gap:3px!important;font-size:9px!important
+ }
+}
+</style>
+
+<style id="cess-perfil-sim-verde-suave-20261125">
+/* Apenas linhas do Perfil Assistencial cujo campo Existe? esteja marcado Sim. */
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Sim"]:checked){
+ background:#def3e4!important;
+ transition:background-color .16s ease;
+}
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Sim"]:checked) > *{
+ background-color:transparent;
+}
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Sim"]:checked) input,
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Sim"]:checked) select{
+ background-color:#f5fff7!important;
+}
+</style>
+
+<style id="cess-perfil-nao-texto-vermelho-20261125">
+/* Apenas Perfil Assistencial: quando Existe? = Não, texto da linha vermelho. */
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Não"]:checked),
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Nao"]:checked),
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Não"]:checked) input,
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Não"]:checked) select,
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Não"]:checked) textarea,
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Nao"]:checked) input,
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Nao"]:checked) select,
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Nao"]:checked) textarea {
+ color:#b4232e!important;
+}
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Não"]:checked) input::placeholder,
+#cess-perfil-dialog .perfil-grid:has(select[data-sim] option[value="Nao"]:checked) input::placeholder {color:#b4232e!important;opacity:.7}
+</style>
+
+<style id="cess-cp-highlight-fixed-style">
+#cess-processos-dialog .cess-destaque-inline{display:none!important}
+#cess-processos-dialog .cess-cp-highlight{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 3px;grid-column:1/-1}
+#cess-processos-dialog .cess-cp-highlight strong{font-size:12px;color:#264651}
+#cess-processos-dialog .cess-cp-highlight button{padding:7px 11px!important;font-size:12px!important;font-weight:600}
+#cess-processos-dialog .cess-cp-highlight [data-cp-color=red]{background:#ffd1d1!important}
+#cess-processos-dialog .cess-cp-highlight [data-cp-color=yellow]{background:#fff0a5!important}
+#cess-processos-dialog .cess-cp-highlight [data-cp-color=green]{background:#ccefd3!important}
+#cess-processos-dialog .cess-cp-highlight [data-cp-color=none]{background:#f3f6f7!important}
+#cess-processos-view .cp-table .cess-highlight-mark{display:inline!important;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+</style>
+<script id="cess-cp-highlight-fixed-script">
+(function(){
+ 'use strict';
+ const form=document.getElementById('cp-form');
+ if(!form)return;
+ const field=form.querySelector('textarea[name="observacoes"]');
+ if(!field)return;
+ const label=field.closest('label');
+ const bar=document.createElement('div');
+ bar.className='cess-cp-highlight';
+ bar.innerHTML='<strong>Destacar trecho das Observações:</strong><button type="button" data-cp-color="red">Vermelho</button><button type="button" data-cp-color="yellow">Amarelo</button><button type="button" data-cp-color="green">Verde</button><button type="button" data-cp-color="none">Remover destaque</button>';
+ label.insertAdjacentElement('afterend',bar);
+ let start=0,end=0;
+ function capture(){start=field.selectionStart;end=field.selectionEnd}
+ ['select','keyup','mouseup'].forEach(ev=>field.addEventListener(ev,capture));
+ bar.addEventListener('mousedown',e=>{if(e.target.closest('button')){capture();e.preventDefault()}});
+ bar.addEventListener('click',e=>{
+  const button=e.target.closest('button[data-cp-color]');
+  if(!button)return;
+  if(end<=start){alert('Selecione primeiro o trecho das Observações que deseja destacar.');field.focus();return}
+  const value=field.value;let a=start,b=end;
+  const left=value.slice(0,a).match(/\[\[CESS:(?:RED|YELLOW|GREEN)\]\]$/);
+  const right=value.slice(b).match(/^\[\[\/CESS\]\]/);
+  if(left&&right){a-=left[0].length;b+=right[0].length}
+  const selected=value.slice(start,end).replace(/\[\[CESS:(?:RED|YELLOW|GREEN)\]\]/g,'').replace(/\[\[\/CESS\]\]/g,'');
+  const color=button.dataset.cpColor;
+  const replacement=color==='none'?selected:'[[CESS:'+color.toUpperCase()+']]'+selected+'[[/CESS]]';
+  field.setRangeText(replacement,a,b,'select');
+  field.dispatchEvent(new Event('input',{bubbles:true}));
+  field.dispatchEvent(new Event('change',{bubbles:true}));
+  field.focus();capture();
+ });
 })();
 </script>
