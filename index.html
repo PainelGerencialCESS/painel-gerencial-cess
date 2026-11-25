@@ -4740,7 +4740,7 @@ async function claimProcess(r){
  }catch(e){alert('Não foi possível vincular: '+(e?.message||String(e)));await load();}
 }
 function edit(r){if(r&&(!canEdit||(!isAdmin&&r.responsavel!==editorPerson))){current=r;}else if(!r&&(!canEdit||!cloudReady)){alert('Você não possui permissão para cadastrar processos.');return;}current=r;form.reset();for(const key of ['sei','unidade','responsavel','equipamento','quantidade','situacao','observacoes','motivo_sobrestamento','data_sobrestamento','previsao_retomada','categoria','os_enviada','os_justificativa','quantidade_atendida','processo_instaurado_em','unidade_destino_transferencia'])if(form.elements[key])form.elements[key].value=r?.[key]||'';$('cp-form-unit').value=r?.unidade||'';$('cp-form-person').value=r?.responsavel||(isAdmin?'':editorPerson);$('cp-form-person').disabled=!isAdmin;const allowed=cloudReady&&canEdit&&(isAdmin||(!r||r.responsavel===editorPerson))&&(!r||!!r.responsavel);for(const el of form.querySelectorAll('input,select,textarea'))el.disabled=!allowed;if(allowed&&!isAdmin)$('cp-form-person').disabled=true;form.querySelector('[type=submit]').hidden=!allowed;dialog.showModal()}
-async function deleteProcess(r){if(!r||!cloudReady||!canEdit||(!isAdmin&&r.responsavel!==editorPerson))return alert('Sem permissão para excluir este processo.');if(!confirm('Enviar este processo para a lixeira?\n'+r.sei))return;try{const {data,error}=await cloud.from('cess_processos_equipe').update({excluido:true}).eq('id',r.id).select('id');if(error)throw error;if(!data?.length)throw Error('O banco não confirmou a exclusão.');await load();alert('Processo enviado para a lixeira.')}catch(err){alert('Não foi possível excluir: '+(err?.message||String(err)))}}
+async function deleteProcess(r){if(!r||!cloudReady||!canEdit||(!isAdmin&&r.responsavel!==editorPerson))return alert('Sem permissão para excluir este processo.');if(!confirm('Enviar este processo para a lixeira?\n'+r.sei))return;try{const {data,error}=await cloud.rpc('cess_cp_enviar_lixeira',{p_id:r.id});if(error)throw error;if(data!==true)throw Error('O banco não confirmou a exclusão.');await load();alert('Processo enviado para a lixeira.')}catch(err){alert('Não foi possível excluir: '+(err?.message||String(err)))}}
 async function save(e){
  e.preventDefault();
  try{
@@ -4780,3 +4780,175 @@ async function importSource(){if(!isAdmin||!cloudReady)return alert('A importaç
 function show(){root.style.display='block';init()}
 const nav=document.querySelector('#cess-planilhas .cess-menu');if(nav){const b=document.createElement('button');b.id='cess-processos-tab';b.type='button';b.textContent='Controle de Processos — Equipe CESS';b.addEventListener('click',show);const team=nav.querySelector('#cess-team-tab');if(team)nav.insertBefore(b,team);else nav.appendChild(b)}else{const b=document.createElement('button');b.textContent='Controle de Processos — Equipe CESS';b.style='position:fixed;right:14px;bottom:14px;z-index:9999';b.onclick=show;document.body.appendChild(b)}
 })();</script>
+<style id="cess-destaque-trechos-style">
+.cess-highlight-tools{position:fixed;z-index:2147483000;display:none;gap:5px;align-items:center;padding:7px 9px;background:#fff;border:1px solid #a7b9cb;border-radius:9px;box-shadow:0 5px 22px #162a4038;font:12px Arial,sans-serif}
+.cess-highlight-tools button{font:12px Arial,sans-serif;padding:5px 8px;border:1px solid #c7d1da;border-radius:6px;cursor:pointer;color:#243446;background:#fff}
+.cess-highlight-tools button[data-color="red"]{background:#ffd9d9}.cess-highlight-tools button[data-color="yellow"]{background:#fff1a9}.cess-highlight-tools button[data-color="green"]{background:#d6f4d6}
+.cess-highlight-mark{border-radius:3px;padding:0 2px;color:#172638}
+.cess-highlight-mark[data-color="red"]{background:#ffb6b6!important}
+.cess-highlight-mark[data-color="yellow"]{background:#ffe58a!important}
+.cess-highlight-mark[data-color="green"]{background:#b7e7bd!important}
+@media print{.cess-highlight-tools{display:none!important}.cess-highlight-mark{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+<script id="cess-destaque-trechos-script">
+(function(){
+ 'use strict';
+ // Marcadores de texto, não HTML: são preservados nos campos existentes e no Supabase.
+ const token=/\[\[CESS:(RED|YELLOW|GREEN)\]\]([\s\S]*?)\[\[\/CESS\]\]/g;
+ const tools=document.createElement('div');
+ tools.className='cess-highlight-tools';
+ tools.setAttribute('role','toolbar');
+ tools.setAttribute('aria-label','Destacar trecho selecionado');
+ tools.innerHTML='<span>Destacar:</span><button type="button" data-color="red">Vermelho</button><button type="button" data-color="yellow">Amarelo</button><button type="button" data-color="green">Verde</button><button type="button" data-color="none">Remover</button>';
+ document.body.appendChild(tools);
+ let active=null,selStart=0,selEnd=0;
+ function eligible(el){
+  if(!el||!el.matches||!el.matches('textarea,input[type="text"],input:not([type])'))return false;
+  const hints=[el.name,el.id,el.placeholder,el.getAttribute('aria-label'),el.closest('label')?.textContent,el.parentElement?.previousElementSibling?.textContent].filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return /observ|andamento|descric|(^|[\s_-])obs([\s_.-]|$)/.test(hints);
+ }
+ function position(el){
+  const r=el.getBoundingClientRect();
+  tools.style.top=Math.max(5,Math.min(innerHeight-52,r.top-47))+'px';
+  tools.style.left=Math.max(5,Math.min(innerWidth-350,r.left))+'px';
+ }
+ function remember(){
+  if(!active||!active.isConnected)return;
+  selStart=active.selectionStart||0;selEnd=active.selectionEnd||0;
+ }
+ document.addEventListener('focusin',e=>{
+  if(eligible(e.target)){active=e.target;remember();position(active);tools.style.display='flex'}
+  else if(!tools.contains(e.target)){tools.style.display='none';active=null}
+ },true);
+ document.addEventListener('select',e=>{if(e.target===active)remember()},true);
+ document.addEventListener('keyup',e=>{if(e.target===active)remember()},true);
+ document.addEventListener('mouseup',e=>{if(e.target===active)remember()},true);
+ window.addEventListener('scroll',()=>{if(active&&active.isConnected)position(active)},true);
+ tools.addEventListener('mousedown',e=>e.preventDefault());
+ tools.addEventListener('click',e=>{
+  const button=e.target.closest('button[data-color]');
+  if(!button||!active||!active.isConnected)return;
+  const color=button.dataset.color;
+  const value=active.value||'';
+  let a=selStart,b=selEnd;
+  if(b<=a){alert('Selecione primeiro o trecho que deseja destacar.');active.focus();return}
+  // Se o trecho já está destacado, remover os marcadores para evitar aninhamento.
+  let selected=value.slice(a,b);
+  const clean=t=>t.replace(/\[\[CESS:(?:RED|YELLOW|GREEN)\]\]/g,'').replace(/\[\[\/CESS\]\]/g,'');
+  selected=clean(selected);
+  // Permite remover um destaque ao selecionar só seu conteúdo.
+  const before=value.slice(0,a),after=value.slice(b);
+  const left=before.match(/\[\[CESS:(?:RED|YELLOW|GREEN)\]\]$/);
+  const right=after.match(/^\[\[\/CESS\]\]/);
+  if(left&&right){a-=left[0].length;b+=right[0].length}
+  const insert=color==='none'?selected:'[[CESS:'+color.toUpperCase()+']]'+selected+'[[/CESS]]';
+  active.setRangeText(insert,a,b,'select');
+  active.dispatchEvent(new Event('input',{bubbles:true}));
+  active.dispatchEvent(new Event('change',{bubbles:true}));
+  remember();active.focus();
+ });
+ // Apresentação segura dos marcadores em células, cartões e relatórios HTML.
+ // Nunca executa HTML fornecido pelo usuário.
+ function renderNode(node){
+  if(!node.parentElement||node.parentElement.closest('script,style,textarea,input,select,option,button,[contenteditable],.cess-highlight-tools,.cess-highlight-mark'))return;
+  const value=node.nodeValue||'';
+  if(!value.includes('[[CESS:'))return;
+  const matches=[...value.matchAll(token)];
+  if(!matches.length)return;
+  const frag=document.createDocumentFragment();let cursor=0;
+  for(const m of matches){
+   if(m.index>cursor)frag.appendChild(document.createTextNode(value.slice(cursor,m.index)));
+   const mark=document.createElement('span');mark.className='cess-highlight-mark';mark.dataset.color=m[1].toLowerCase();mark.textContent=m[2];frag.appendChild(mark);
+   cursor=m.index+m[0].length;
+  }
+  if(cursor<value.length)frag.appendChild(document.createTextNode(value.slice(cursor)));
+  node.replaceWith(frag);
+ }
+ let busy=false;
+ function decorate(root){
+  if(busy)return;busy=true;
+  try{
+   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+   const nodes=[];let n;
+   while((n=walker.nextNode()))if(n.nodeValue?.includes('[[CESS:'))nodes.push(n);
+   nodes.forEach(renderNode);
+  }finally{busy=false}
+ }
+ decorate(document.body);
+ const observer=new MutationObserver(records=>{
+  if(busy)return;
+  for(const r of records){
+   if(r.type==='characterData'&&r.target.nodeType===3)renderNode(r.target);
+   for(const node of r.addedNodes){
+    if(node.nodeType===3)renderNode(node);
+    else if(node.nodeType===1&&!node.closest('.cess-highlight-tools'))decorate(node);
+   }
+  }
+ });
+ observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+})();
+</script>
+
+<style id="cess-destaque-inline-style">
+.cess-destaque-inline{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0 2px;font:12px Arial,sans-serif}
+.cess-destaque-inline span{font-weight:600;color:#36505e}
+.cess-destaque-inline button{border:1px solid #bacbd4;border-radius:6px;padding:5px 9px;font:12px Arial,sans-serif;cursor:pointer;color:#233845}
+.cess-destaque-inline [data-highlight="red"]{background:#ffcaca}
+.cess-destaque-inline [data-highlight="yellow"]{background:#ffed9b}
+.cess-destaque-inline [data-highlight="green"]{background:#c9eccb}
+.cess-destaque-inline [data-highlight="none"]{background:#f5f7f9}
+.cess-highlight-tools{display:none!important}
+@media print{.cess-destaque-inline{display:none!important}}
+</style>
+<script id="cess-destaque-inline-script">
+(function(){
+'use strict';
+function norm(t){return (t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+function eligible(el){
+ if(!el.matches('textarea'))return false;
+ const label=el.closest('label');
+ const hint=norm([el.name,el.id,el.placeholder,el.getAttribute('aria-label'),label?.textContent].join(' '));
+ return /observ|descric|andamento/.test(hint);
+}
+function install(root){
+ const els=[];
+ if(root.nodeType===1&&root.matches?.('textarea'))els.push(root);
+ root.querySelectorAll?.('textarea').forEach(x=>els.push(x));
+ for(const el of els){
+  if(!eligible(el)||el.dataset.cessHighlightInline)return;
+  el.dataset.cessHighlightInline='1';
+  const bar=document.createElement('div');
+  bar.className='cess-destaque-inline';
+  bar.innerHTML='<span>Destacar trecho:</span><button type="button" data-highlight="red">Vermelho</button><button type="button" data-highlight="yellow">Amarelo</button><button type="button" data-highlight="green">Verde</button><button type="button" data-highlight="none">Remover</button>';
+  el.insertAdjacentElement('afterend',bar);
+  let start=0,end=0;
+  const capture=()=>{start=el.selectionStart;end=el.selectionEnd};
+  el.addEventListener('select',capture);
+  el.addEventListener('keyup',capture);
+  el.addEventListener('mouseup',capture);
+  bar.addEventListener('mousedown',e=>{if(e.target.closest('button')){capture();e.preventDefault()}});
+  bar.addEventListener('click',e=>{
+   const btn=e.target.closest('button[data-highlight]');if(!btn)return;
+   if(end<=start){alert('Selecione um trecho do texto antes de escolher a cor.');el.focus();return}
+   let a=start,b=end;
+   const value=el.value;
+   let selected=value.slice(a,b);
+   const left=value.slice(0,a).match(/\[\[CESS:(?:RED|YELLOW|GREEN)\]\]$/);
+   const right=value.slice(b).match(/^\[\[\/CESS\]\]/);
+   if(left&&right){a-=left[0].length;b+=right[0].length}
+   selected=selected.replace(/\[\[CESS:(?:RED|YELLOW|GREEN)\]\]/g,'').replace(/\[\[\/CESS\]\]/g,'');
+   const color=btn.dataset.highlight;
+   const replacement=color==='none'?selected:'[[CESS:'+color.toUpperCase()+']]'+selected+'[[/CESS]]';
+   el.setRangeText(replacement,a,b,'select');
+   el.dispatchEvent(new Event('input',{bubbles:true}));
+   el.dispatchEvent(new Event('change',{bubbles:true}));
+   el.focus();capture();
+  });
+ }
+}
+install(document.body);
+new MutationObserver(records=>{
+ for(const r of records)for(const n of r.addedNodes)if(n.nodeType===1&&!n.classList?.contains('cess-destaque-inline'))install(n);
+}).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
