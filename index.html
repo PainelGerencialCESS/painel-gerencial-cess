@@ -2795,14 +2795,10 @@ document.getElementById('report-pdf').addEventListener('click',makeReport);
 #cess-trash-table button{white-space:nowrap}
 #cess-trash-delete{background:#fff1f0;color:#9b303a;border-color:#e8a7a7;margin-right:auto}
 </style>
-<dialog id="cess-trash-dialog"><div class="modal"><h2>Lixeira de registros</h2><p class="muted">Acesso exclusivo da administração. Os registros podem ser restaurados sem perda das informações.</p><div id="cess-trash-filters" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0">
-<label>Módulo<select id="cess-trash-module"><option value="">Todos os módulos</option></select></label>
-<label>Buscar equipamento / unidade<input id="cess-trash-search" type="search" placeholder="Digite para consultar"></label>
-<label>Responsável<input id="cess-trash-user" type="search" placeholder="Nome ou e-mail"></label>
-<label>Excluído a partir de<input id="cess-trash-from" type="date"></label>
-<label>Excluído até<input id="cess-trash-to" type="date"></label>
-<button type="button" id="cess-trash-clear" style="align-self:end">Limpar filtros</button>
-</div><p id="cess-trash-status" role="status"></p><div class="tablebox"><table id="cess-trash-table"><thead><tr><th>Grupo</th><th>Equipamento / registro</th><th>Exclusão / responsável</th><th>Ação</th></tr></thead><tbody id="cess-trash-body"></tbody></table></div><div style="display:flex;justify-content:flex-end;margin-top:15px"><button id="cess-trash-close" type="button">Fechar</button></div></div></dialog>
+<style id="cess-trash-central-style">
+#cess-trash-dialog{width:min(1280px,96vw);max-width:1280px}#cess-trash-dialog .modal{padding:18px}#cess-trash-heading{background:linear-gradient(110deg,#31545e,#76949c);color:white;padding:16px;border-radius:9px}#cess-trash-heading h2{margin:0;color:white}#cess-trash-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}#cess-trash-metrics div{border:1px solid #d6e1e4;background:#f4f8f9;border-radius:8px;padding:10px}#cess-trash-metrics strong{display:block;font-size:24px;color:#31545e}#cess-trash-filters label{display:flex;flex-direction:column;gap:4px;font-size:12px}#cess-trash-filters input,#cess-trash-filters select{width:100%;min-width:0;box-sizing:border-box}#cess-trash-table th{background:#31545e;color:white}#cess-trash-table th:nth-child(1){width:19%}#cess-trash-table th:nth-child(2){width:32%}#cess-trash-table th:nth-child(3){width:13%}#cess-trash-table th:nth-child(4){width:25%}#cess-trash-table th:nth-child(5){width:11%}#cess-trash-table td:nth-child(4){text-align:left}#cess-trash-table button{background:#e3f3e7;color:#22643a;border:1px solid #a4cbb0;border-radius:5px}#cess-trash-table td{font-size:11px;padding:7px}#cess-trash-export{background:#31545e;color:white}
+</style><dialog id="cess-trash-dialog"><div class="modal"><div id="cess-trash-heading" style="position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h2>Central de Registros Excluídos</h2><div>Acesso exclusivo da administração · Restauração de registros</div></div><button id="cess-trash-close" type="button" style="flex-shrink:0">Fechar</button></div><div id="cess-trash-metrics"><div>Total excluído<strong id="cess-trash-total">—</strong></div><div>Módulos com exclusões<strong id="cess-trash-modcount">—</strong></div><div>Exclusões do mês<strong id="cess-trash-month">—</strong></div></div><div id="cess-trash-filters" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin:14px 0">
+<label>Módulo<select id="cess-trash-module"></select></label><label>Responsável pelo registro<select id="cess-trash-owner"></select></label><label>Excluído por<select id="cess-trash-user"></select></label><label>Data inicial<input id="cess-trash-from" type="date"></label><label>Data final<input id="cess-trash-to" type="date"></label><label>Buscar registro<input id="cess-trash-search" type="search" placeholder="Processo, equipamento, unidade"></label></div><div style="display:flex;gap:8px;justify-content:flex-end"><button id="cess-trash-clear" type="button">Limpar filtros</button><button id="cess-trash-export" type="button">Exportar CSV</button></div><p id="cess-trash-status" role="status"></p><div class="tablebox"><table id="cess-trash-table"><thead><tr><th>Módulo</th><th>Registro / unidade</th><th>Responsável</th><th>Data / excluído por</th><th>Ação</th></tr></thead><tbody id="cess-trash-body"></tbody></table></div></div></dialog>
 <script id="cess-trash-ui">
 (()=>{
  const $=id=>document.getElementById(id), api=()=>window.CESS_TRASH_API;
@@ -2823,35 +2819,21 @@ document.getElementById('report-pdf').addEventListener('click',makeReport);
  new MutationObserver(syncDelete).observe($('dlg'),{attributes:true,attributeFilter:['open']});
  document.addEventListener('click',e=>{if(e.target.closest('[data-edit],[data-special-edit],#new'))setTimeout(syncDelete,0)},true);
  window.addEventListener('cess-trash-ready',access);access();
- let trashRows=[];
- const filters={module:$('cess-trash-module'),search:$('cess-trash-search'),user:$('cess-trash-user'),from:$('cess-trash-from'),to:$('cess-trash-to')};
- function recordInfo(r){
-  const d=(r.dados&&typeof r.dados==='object')?r.dados:{};
-  const name=[r.item,r.equipamento,d.equipamento,d.nome_equipamento,d.descricao_equipamento,d.modalidade,d.tipo_equipamento,r.registro_id].find(x=>typeof x==='string'&&x.trim());
-  const unit=[r.unidade,d.unidade,d.nome_unidade,d.estabelecimento,d.municipio].find(x=>typeof x==='string'&&x.trim());
-  const id=r.id==null?'':' #'+r.id;
-  return {name:name||('Registro'+id),unit:unit||'',search:[name,unit,r.registro_id,r.grupo,r.id,JSON.stringify(d)].join(' ').toLocaleLowerCase('pt-BR')};
- }
- function renderTrash(){
-  const filtered=trashRows.filter(r=>{
-   const info=recordInfo(r),date=r.excluido_em?String(r.excluido_em).slice(0,10):'';
-   return (!filters.module.value||String(r.grupo||'')===filters.module.value)
-    &&(!filters.search.value||info.search.includes(filters.search.value.trim().toLocaleLowerCase('pt-BR')))
-    &&(!filters.user.value||String(r.excluido_por_email||'').toLocaleLowerCase('pt-BR').includes(filters.user.value.trim().toLocaleLowerCase('pt-BR')))
-    &&(!filters.from.value||date>=filters.from.value)
-    &&(!filters.to.value||date<=filters.to.value);
-  });
-  status.textContent=`${filtered.length} registro(s) encontrado(s) de ${trashRows.length} na Lixeira.`;
-  body.innerHTML=filtered.map(r=>{const info=recordInfo(r);return `<tr><td>${esc(r.grupo||'—')}</td><td><strong>${esc(info.name)}</strong>${info.unit?`<div style="margin-top:4px;color:#52636b;font-size:11px">${esc(info.unit)}</div>`:''}</td><td><strong>${esc(r.excluido_em?new Date(r.excluido_em).toLocaleString('pt-BR'):'—')}</strong><div style="margin-top:4px;color:#52636b;font-size:11px">${esc(r.excluido_por_email||'Responsável não identificado')}</div></td><td><button type="button" data-restore-id="${Number(r.id)}" data-restore-source="${esc(r.origem_lixeira||'registros_cess')}">Restaurar</button></td></tr>`}).join('');
- }
- async function list(){
-  status.textContent='Consultando registros excluídos…';body.innerHTML='';
-  try{trashRows=await api().list();
-   const modules=[...new Set(trashRows.map(r=>String(r.grupo||'—')))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-   filters.module.innerHTML='<option value="">Todos os módulos</option>'+modules.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
-   renderTrash();
-  }catch(e){status.textContent='Falha ao consultar Lixeira: '+e.message}
- }
+ let trashRows=[],filtered=[];
+ const filters={module:$('cess-trash-module'),search:$('cess-trash-search'),owner:$('cess-trash-owner'),user:$('cess-trash-user'),from:$('cess-trash-from'),to:$('cess-trash-to')};
+ const modules={GERAL:'Levantamento Geral',RDI:'Radiodiagnóstico',__CESS_RDI_DISTRIBUICAO__:'Distribuição RDI',__CESS_ADESOES__:'Adesões'};
+ const moduleName=r=>modules[r.grupo]||r.grupo||'Não identificado';
+ const owner=r=>String(r.responsavel||r.dados?.responsavel||'Não registrado');
+ const author=r=>String(r.excluido_por_email||r.excluido_por||'Não registrado');
+ const date=r=>r.excluido_em?new Date(r.excluido_em).toLocaleDateString('sv-SE',{timeZone:'America/Bahia'}):'';
+ const dateLabel=r=>r.excluido_em?new Date(r.excluido_em).toLocaleString('pt-BR',{timeZone:'America/Bahia'}):'Não registrado';
+ function recordInfo(r){const d=r.dados&&typeof r.dados==='object'?r.dados:{};const name=[r.processo,r.processo_sei,r.item,r.equipamento,d.equipamento,d.nome_equipamento,d.descricao_equipamento,d.modalidade,d.tipo_equipamento,r.registro_id].find(x=>x!=null&&String(x).trim())||('Registro #'+r.id);const unit=r.unidade||d.unidade||d.nome_unidade||d.estabelecimento||d.municipio||'';const detail=r.assunto||r.equipamento_item||'';return {name,unit,detail,search:[name,unit,detail,r.observacao,r.registro_id,r.id,JSON.stringify(d)].join(' ').toLocaleLowerCase('pt-BR')};}
+ function options(el,values,label){const old=el.value;el.innerHTML='<option value="">'+label+'</option>'+[...new Set(values)].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');el.value=old;}
+ function renderTrash(){filtered=trashRows.filter(r=>(!filters.module.value||moduleName(r)===filters.module.value)&&(!filters.owner.value||owner(r)===filters.owner.value)&&(!filters.user.value||author(r)===filters.user.value)&&(!filters.search.value||recordInfo(r).search.includes(filters.search.value.trim().toLocaleLowerCase('pt-BR')))&&(!filters.from.value||(date(r)&&date(r)>=filters.from.value))&&(!filters.to.value||(date(r)&&date(r)<=filters.to.value)));
+ status.textContent=`${filtered.length} de ${trashRows.length} registros encontrados.`;
+ body.innerHTML=filtered.map(r=>{const i=recordInfo(r);return `<tr><td>${esc(moduleName(r))}</td><td><strong>${esc(i.name)}</strong><div>${esc(i.unit)}</div><div>${esc(i.detail)}</div></td><td>${esc(owner(r))}</td><td>${esc(dateLabel(r))}<div>${esc(author(r))}</div></td><td><button type="button" data-restore-id="${esc(r.id)}" data-restore-source="${esc(r.origem_lixeira)}">Restaurar</button></td></tr>`}).join('')||'<tr><td colspan="5">Nenhum registro encontrado.</td></tr>';}
+ async function list(){status.textContent='Consultando registros excluídos…';body.innerHTML='';trashRows=[];filtered=[];try{trashRows=await api().list();const names=trashRows.map(moduleName);options(filters.module,[...Object.values(modules),'Monitoramento RDI','Controle de Processos - Equipe CESS','Controle de Processos - Engenharia Clínica',...names],'Todos os módulos');options(filters.owner,trashRows.map(owner),'Todos');options(filters.user,trashRows.map(author),'Todos');$('cess-trash-total').textContent=trashRows.length;$('cess-trash-modcount').textContent=new Set(names).size;const month=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Bahia'}).slice(0,7);$('cess-trash-month').textContent=trashRows.filter(r=>date(r).startsWith(month)).length;renderTrash()}catch(e){status.textContent='Falha ao consultar Lixeira: '+e.message}}
+ $('cess-trash-export').addEventListener('click',()=>{if(!api()?.isAdmin())return;const cell=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/,m=>"'"+m).replace(/"/g,'""')+'"';const lines=[['Módulo','Registro','Unidade','Assunto','Responsável','Data da exclusão','Excluído por'],...filtered.map(r=>{const i=recordInfo(r);return [moduleName(r),i.name,i.unit,i.detail,owner(r),dateLabel(r),author(r)]})];const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(l=>l.map(cell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Lixeira_CESS.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
  Object.values(filters).forEach(el=>el.addEventListener('input',renderTrash));
  $('cess-trash-clear').addEventListener('click',()=>{Object.values(filters).forEach(el=>el.value='');renderTrash()});
  entry.addEventListener('click',()=>{if(!api()?.isAdmin())return;menu.parentElement.open=false;dialog.showModal();list()});
@@ -3333,7 +3315,7 @@ window.CESS_TRASH_API={
   render();renderSpecial();
   return true;
  },
- async restore(dbId,source='registros_cess'){if(!admin||!authUser)throw Error('Acesso restrito à administração');if(source==='monitoramento_rdi_cess'){const {error}=await supabase.rpc('cess_restaurar_monitoramento_rdi',{p_id:dbId});if(error)throw error;return true;}if(source!=='registros_cess')throw Error('Origem não reconhecida.');const {data:ok,error}=await supabase.rpc('cess_restaurar_lixeira',{p_registro_id:dbId});if(error)throw error;if(ok!==true)throw Error('Restauração não confirmada.');await load();return true}
+ async restore(dbId,source='registros_cess'){if(!admin||!authUser)throw Error('Acesso restrito à administração');const {data:ok,error}=await supabase.rpc('cess_restaurar_lixeira_unificada',{p_origem:source,p_id:dbId});if(error)throw error;if(ok!==true)throw Error('Restauração não confirmada.');if(source==='registros_cess')await load();return true}
 };
 window.dispatchEvent(new Event('cess-trash-ready'));
 
@@ -5446,7 +5428,7 @@ window.CESSProcessReport=function(module,person,rows,fields,csv){
  const title='Controle de Processos — '+module;
  if(csv){const quote=v=>'"'+( /^[\s]*[=+\-@\t\r]/.test(v)?"'"+v:v).replace(/"/g,'""')+'"';const data=[fields.map(f=>quote(f[0])).join(';'),...rows.map(r=>fields.map(f=>quote(value(r,f[1]))).join(';'))].join('\r\n');const url=URL.createObjectURL(new Blob(['\uFEFF',data],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Processos_'+module+'_'+person+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
  const w=window.open('','_blank');if(!w){alert('Permita a abertura de janelas para imprimir.');return;}
- const d=w.document;d.title=title;const style=d.createElement('style');style.textContent='@page{size:A4 landscape;margin:12mm}body{font:9px Arial,sans-serif;color:#173845}h1{font-size:15px;margin:0 0 6px}p{margin:3px 0 8px}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{font-size:9px;line-height:1.2;border:1px solid #d4dfe2;padding:3px 4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}th{font-weight:700}th{background:#31535e;color:white;print-color-adjust:exact;-webkit-print-color-adjust:exact}thead{display:table-header-group}tr{break-inside:avoid}';d.head.append(style);const h=d.createElement('h1');h.textContent=title;const p=d.createElement('p');p.textContent='Colaborador: '+person+' | '+rows.length+' registros | '+new Date().toLocaleDateString('pt-BR');const table=d.createElement('table'),head=table.createTHead().insertRow(),body=table.createTBody();for(const f of fields){const th=d.createElement('th');th.textContent=f[0];head.append(th)}for(const r of rows){const tr=body.insertRow();for(const f of fields)tr.insertCell().textContent=value(r,f[1]);}d.body.append(h,p,table);w.focus();w.print();
+ const d=w.document;d.title=title;const style=d.createElement('style');style.textContent='@page{size:A4 landscape;margin:12mm}body{font:9px Arial,sans-serif;color:#173845}h1{font-size:15px;margin:0 0 6px}p{margin:3px 0 8px}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{font-size:9px;line-height:1.2;border:1px solid #d4dfe2;padding:3px 4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}th{font-weight:700}th{background:#31535e;color:white;print-color-adjust:exact;-webkit-print-color-adjust:exact}thead{display:table-header-group}tr{break-inside:avoid}';d.head.append(style);const h=d.createElement('h1');h.textContent=title;const p=d.createElement('p');p.textContent='Colaborador: '+person+' | '+rows.length+' registros | '+new Date().toLocaleDateString('pt-BR');const table=d.createElement('table'),head=table.createTHead().insertRow(),body=table.createTBody();for(const f of fields){const th=d.createElement('th');th.textContent=f[0];head.append(th)}for(const r of rows){const tr=body.insertRow();for(const f of fields)tr.insertCell().textContent=value(r,f[1]);}d.body.append(h,p,table);w.focus();if(module==='Equipe CESS'){const toolbar=d.createElement('div');toolbar.className='cess-report-toolbar';const b=d.createElement('button');b.type='button';b.textContent='Imprimir / Salvar como PDF';b.addEventListener('click',()=>w.print());toolbar.append(b);d.body.prepend(toolbar);style.textContent+=' .cess-report-toolbar{margin-bottom:12px}.cess-report-toolbar button{padding:8px 14px;cursor:pointer}@media print{.cess-report-toolbar{display:none!important}}';}else{w.print();}
 };
 </script>
 <style id="cess-process-rich-fix">
